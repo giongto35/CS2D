@@ -225,13 +225,3 @@ socketServer.on('connection', function connection(socket) {
 
 	// })
 });
-// WHY DO YOU CHOOSE GAMELOFT?  (*)  
-// Gameloft is a leading mobile game company in the world with a modern and active working environment. I always have a dream to work in game industry for a long time, so Gameloft will be the most suitable place for me gain a lot of valuable experience and knowledge in game area.
-
-// WHY DO YOU APPLY FOR THAT POSITION?  (*)
-// I have a great enthusiasm in game. Secondly, my experience as a profesional player and Game Master in Cross Fire gain me deeper knowledge in 
-
-// WHAT MAKES YOU THINK THAT YOU WILL SUCCEED IN THAT POSITION?  (*)
-// My experience as a top player with some national achivements and a Game Master in Cross Fire gain me deeper knowledge in 
-
-// I have long experience with game as a top player with some national achievements, so I have ability to play game intensely in continous period under high pressure. Besides, I found, exploited and reported many bugs during my professional player career. I was also nominated as a Game Master for Cross Fire to detect and ban cheating players.
