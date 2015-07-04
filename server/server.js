@@ -4,27 +4,15 @@ require('path');
 require('http').Server(app);
 require('arraybuffer-to-buffer');
 
+var constant = require('../share/const.js');
+var gameObject = require('./gameObject.js');
 var express = require('express');
 var app = express();
 var WebSocketServer = require('ws').Server;
 var socketServer = new WebSocketServer({port: 3030});
 var fs = require('fs');
 var configFilePath = 'server/config.yml';
-var dir = [{x: -1, y: 0}, {x: 0, y: -1}, {x: 1, y: 0}, {x: 0, y: 1}];
 var curr_id = 0;
-var KEY_LEFT = 37;
-var KEY_UP = 38;
-var KEY_RIGHT = 39;
-var KEY_DOWN = 40;
-
-//make register function for command
-var COMMAND_TYPE = {init: 0, keyboard: 1, mouse: 2, update: 3};
-var pack = [
-	{id: 'Int32', x: 'Int32', y: 'Int32'},
-	{key: 'Uint8'}, 
-	{x: 'Float32', y: 'Float32'},
-	{x: 'Float32', y: 'Float32'}
-];
 
 // function loadConfig(configFilePath) {
 // 	if (!fs.existsSync(configFilePath)) {
@@ -41,8 +29,6 @@ var pack = [
 
 var players = [];
 var sockets = [];
-var dy = [-1, 0, 1, 0];
-var dx = [0, -1, 0, 1];
 
 function toArrayBuffer(buffer) {
     var ab = new ArrayBuffer(buffer.length);
@@ -69,9 +55,9 @@ function decrypt(ab) {
 	var op = dv.getUint8(0);
 	var offset = 1;
 
-	res['command'] = op;
-	for (var m in pack[op]) {
-		switch (pack[op][m]) {
+	res.command = op;
+	for (var m in constant.PACK[op]) {
+		switch (constant.PACK[op][m]) {
 			case 'Uint8':
 				res[m] = dv.getUint8(offset);
 				offset += 1;
@@ -100,13 +86,13 @@ function decrypt(ab) {
 function encrypt(data) {
 	var cnt = 1; //Opcode
 	var op = data.command;
-	for (var m in pack[op]) {
-		switch(pack[op][m]) {
+	for (var m in constant.PACK[op]) {
+		switch(constant.PACK[op][m]) {
 			case 'Uint8':
 				cnt += 1;
 				break;
 			case 'Int8':
-				cnt += 1
+				cnt += 1;
 				break;
 			case 'Int16':
 				cnt += 2;
@@ -123,8 +109,8 @@ function encrypt(data) {
 	var dv = new DataView(res);
 	var offset = 1;
 	dv.setUint8(0, op);
-	for (var m in pack[op]) {
-		switch(pack[op][m]) {
+	for (m in constant.PACK[op]) {
+		switch(constant.PACK[op][m]) {
 			case 'Uint8':
 				dv.setUint8(offset, data[m]);
 				offset += 1;
@@ -153,60 +139,65 @@ function encrypt(data) {
 console.log('Listening on port 3030 ...');
 
 function movePlayer(player, d) {
-	player.x += dir[d].x;
-	player.y += dir[d].y;
+	player.x += constant.DIR[d].x;
+	player.y += constant.DIR[d].y;
 }
 
-function processShootingEvent(socket, currentPlayer, data) {
-
+function findIndex(arr, id) {
+    var len = arr.length;
+    while (len--) {
+        if (arr[len].id === id) {
+            return len;
+        }
+    }
+    return -1;
 }
 
-function processKeyboardEvent(socket, currentPlayer, data) {
-	if (data.key == KEY_UP || data.key == KEY_DOWN || data.key == KEY_LEFT || data.key == KEY_RIGHT) {
-		movePlayer(currentPlayer, data.key - KEY_LEFT);
+function processShootingEvent(socket, data) {
+}
+
+function processKeyboardEvent(socket, data) {
+	var player = players[findIndex(players, data.id)];
+	if (data.key == constant.KEY_UP || data.key == constant.KEY_DOWN || data.key == constant.KEY_LEFT || data.key == constant.KEY_RIGHT) {
+		movePlayer(player, data.key - constant.KEY_LEFT);
 	}
 	socket.send(encrypt({
-		command: COMMAND_TYPE.update, 
-		id: currentPlayer.id, 
-		x: currentPlayer.x, 
-		y: currentPlayer.y
+		command: constant.COMMAND_TYPE.UPDATE, 
+		id: player.id, 
+		x: player.x, 
+		y: player.y
 	}));	
 }
 
 socketServer.on('connection', function connection(socket) {
 	console.log('A user connected. Assigning UserID...');
 
-	var currentPlayer = {
-		id: ++curr_id,
-		x: 0,
-		y: 0
-	}
-
+	var player = new gameObject.Player(curr_id++, 10, 10);
+	players.push(player);
 	socket.send(encrypt({
-		command: COMMAND_TYPE.init, 
-		id: currentPlayer.id, 
-		x: currentPlayer.x, 
-		y: currentPlayer.y
-	}))	
+		command: constant.COMMAND_TYPE.INIT,
+		id: player.id,
+		x: player.x,
+		y: player.y
+	}))
 
 	// socket.send(toBuffer(buffer), {binary: true}, function ack(error) {
 	// 	console.log(error);
 	// });
 
   	socket.on('message', function (mess) {
-  		data = decrypt(mess);
-		console.log(data);
-		if (data.command == COMMAND_TYPE.keyboard) {
-			processKeyboardEvent(socket, currentPlayer, data);
+  		var data = decrypt(mess);
+		if (data.command == constant.COMMAND_TYPE.KEYBOARD) {
+			processKeyboardEvent(socket, data);
 		}
-		if (data.command == COMMAND_TYPE.mouse) {
-			processShootingEvent(socket, currentPlayer, data);
+		if (data.command == constant.COMMAND_TYPE.MOUSE) {
+			processShootingEvent(socket, data);
 		}
  	});
 	// socket.emit('welcome', encrypt(PlayerSettings));
 
 	socket.on('playerConnected', function (player) {
-	})
+	});
 
 	// socket.on('ping', function () {
 	// 	socket.emit('pong');

@@ -32,13 +32,6 @@ var socket = new WebSocket('ws://127.0.0.1:3030');
 socket.binaryType = 'arraybuffer';
 
 //make register function for command
-var COMMAND_TYPE = {init: 0, keyboard: 1, shoot: 2, update: 3};
-var pack = [
-	{id: 'Int32', x: 'Int32', y: 'Int32'},
-	{key: 'Uint8'}, 
-	{x1: 'Float32', y1: 'Float32', x2: 'Float32', y2: 'Float32'},
-	{x: 'Float32', y: 'Float32'}
-]
 
 var KEY_LEFT = 37;
 var KEY_UP = 38;
@@ -61,7 +54,6 @@ window.onload = function() {
 	}, true);
 
 	window.addEventListener('mousedown', function (e) {
-		console.log(e.clientX + " " + e.clientY + " " + player.x + " " + player.y + " " + player.graphic.x + " " + player.graphic.y);
 		mouseDownEvent(e);
 	}, false);
 
@@ -113,8 +105,8 @@ function decrypt(ab) {
 	var offset = 1;
 
 	res['command'] = op;
-	for (var m in pack[op]) {
-		switch (pack[op][m]) {
+	for (var m in constant.PACK[op]) {
+		switch (constant.PACK[op][m]) {
 			case 'Uint8':
 				res[m] = dv.getUint8(offset);
 				offset += 1;
@@ -143,8 +135,8 @@ function decrypt(ab) {
 function encrypt(data) {
 	var cnt = 1; //Opcode
 	var op = data.command;
-	for (var m in pack[op]) {
-		switch(pack[op][m]) {
+	for (var m in constant.PACK[op]) {
+		switch(constant.PACK[op][m]) {
 			case 'Uint8':
 				cnt += 1;
 				break;
@@ -166,8 +158,8 @@ function encrypt(data) {
 	var dv = new DataView(res);
 	var offset = 1;
 	dv.setUint8(0, op);
-	for (var m in pack[op]) {
-		switch(pack[op][m]) {
+	for (var m in constant.PACK[op]) {
+		switch(constant.PACK[op][m]) {
 			case 'Uint8':
 				dv.setUint8(offset, data[m]);
 				offset += 1;
@@ -230,11 +222,11 @@ function setupSocket(socket) {
 		var data = decrypt(event.data);
 		// console.log(data);
 		switch (data.command) {
-			case COMMAND_TYPE.init:
+			case constant.COMMAND_TYPE.INIT:
 				//construct player
 				player = new createPlayer(data.id, data.x, data.y);
 				break;
-			case COMMAND_TYPE.update:
+			case constant.COMMAND_TYPE.UPDATE:
 				updatePosition(data);
 				break;
 		}
@@ -267,11 +259,11 @@ function updateGameState() {
 	//update by game input
 	for (var m in gameInput.keyboard) {
 		if (gameInput.keyboard[m]) {
-			socket.send(encrypt({command: COMMAND_TYPE.keyboard, key: m}));
+			socket.send(encrypt({command: constant.COMMAND_TYPE.KEYBOARD, id: player.id, key: m}));
 		}
 		if (gameInput.mouse.down) {
 			shootBullet(player, player.x, player.y, gameInput.mouse.x, gameInput.mouse.y);
-			socket.send(encrypt({command: COMMAND_TYPE.shoot, x1: player.x, y1: player.y, x2: gameInput.mouse.x, y2: gameInput.mouse.y}));
+			socket.send(encrypt({command: constant.COMMAND_TYPE.SHOOT, x1: player.x, y1: player.y, x2: gameInput.mouse.x, y2: gameInput.mouse.y}));
 		}
 	}
 
@@ -313,7 +305,7 @@ function createPlayer(id, x, y, reloadInterval) {
 	this.id = id != undefined ? id : -1;
 	this.x = x != undefined ? x : 0;
 	this.y = y != undefined ? y : 0;
-	this.reloadInterval = reloadInterval != undefined ? reloadInterval : 500;
+	this.reloadInterval = reloadInterval != undefined ? reloadInterval : 10;
 	this.shotTime = -1000000;
 
 	graphicStage.addChild(this.graphic);
@@ -335,10 +327,11 @@ function createPlayer(id, x, y, reloadInterval) {
 }
 
 function createBullet(x1, y1, x2, y2) {
-	this.graphic = drawCircle(x1, y1, 1);
+	this.graphic = drawCircle(0, 0, 1);
 	this.speed = bulletConfig.speed;
 	this.x = x1;
 	this.y = y1;
+
     // graphicObj.push(this);
 	graphicStage.addChild(this.graphic);
 	gameObj.push(this);
