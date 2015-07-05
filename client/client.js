@@ -97,112 +97,6 @@ function shootBullet(player, x1, y1, x2, y2) {
 	}
 }
 
-function decrypt(ab) {
-	//keyboard
-	var res = {};
-	var dv = new DataView(ab);
-	var op = dv.getUint8(0);
-	var offset = 1;
-
-	res['command'] = op;
-	for (var m in constant.PACK[op]) {
-		switch (constant.PACK[op][m]) {
-			case 'Uint8':
-				res[m] = dv.getUint8(offset);
-				offset += 1;
-				break;
-			case 'Int8':
-				res[m] = dv.getInt8(offset);
-				offset += 1;
-				break;
-			case 'Int16':
-				res[m] = dv.getInt16(offset);
-				offset += 2;
-				break;
-			case 'Int32':
-				res[m] = dv.getInt32(offset);
-				offset += 4;
-				break;
-			case 'Float32':
-				res[m] = dv.getFloat32(offset);
-				offset += 4;
-				break;
-		}
-	}
-	return res;
-}
-
-function encrypt(data) {
-	var cnt = 1; //Opcode
-	var op = data.command;
-	for (var m in constant.PACK[op]) {
-		switch(constant.PACK[op][m]) {
-			case 'Uint8':
-				cnt += 1;
-				break;
-			case 'Int8':
-				cnt += 1
-				break;
-			case 'Int16':
-				cnt += 2;
-				break;
-			case 'Int32':
-				cnt += 4;
-				break;
-			case 'Float32':
-				cnt += 4;
-				break;
-		}		
-	}
-	var res = new ArrayBuffer(cnt);
-	var dv = new DataView(res);
-	var offset = 1;
-	dv.setUint8(0, op);
-	for (var m in constant.PACK[op]) {
-		switch(constant.PACK[op][m]) {
-			case 'Uint8':
-				dv.setUint8(offset, data[m]);
-				offset += 1;
-				break;
-			case 'Int8':
-				dv.setInt8(offset, data[m]);
-				offset += 1;
-				break;
-			case 'Int16':
-				dv.setInt16(offset, data[m]);
-				offset += 2;
-				break;
-			case 'Int32':
-				dv.setInt32(offset, data[m]);
-				offset += 4;
-				break;
-			case 'Float32':
-				dv.setFloat32(offset, data[m]);
-				offset += 4;
-				break;
-		}
-	}
-	return res;
-}
-
-function toArrayBuffer(buffer) {
-    var ab = new ArrayBuffer(buffer.length);
-    var view = new Uint8Array(ab);
-    for (var i = 0; i < buffer.length; ++i) {
-        view[i] = buffer[i];
-    }
-    return ab;
-}
-
-function toBuffer(ab) {
-    var buffer = new Buffer(ab.byteLength);
-    var view = new Uint8Array(ab);
-    for (var i = 0; i < buffer.length; ++i) {
-        buffer[i] = view[i];
-    }
-    return buffer;
-}
-
 function updatePosition(data) {
 	player.x = data.x;
 	player.y = data.y;
@@ -219,7 +113,7 @@ function setupSocket(socket) {
 	}
 
 	socket.onmessage = function (event) {
-		var data = decrypt(event.data);
+		var data = coding.decrypt(event.data);
 		// console.log(data);
 		switch (data.command) {
 			case constant.COMMAND_TYPE.INIT:
@@ -259,11 +153,11 @@ function updateGameState() {
 	//update by game input
 	for (var m in gameInput.keyboard) {
 		if (gameInput.keyboard[m]) {
-			socket.send(encrypt({command: constant.COMMAND_TYPE.KEYBOARD, id: player.id, key: m}));
+			socket.send(coding.encrypt({command: constant.COMMAND_TYPE.KEYBOARD, id: player.id, key: m}));
 		}
 		if (gameInput.mouse.down) {
 			shootBullet(player, player.x, player.y, gameInput.mouse.x, gameInput.mouse.y);
-			socket.send(encrypt({command: constant.COMMAND_TYPE.SHOOT, x1: player.x, y1: player.y, x2: gameInput.mouse.x, y2: gameInput.mouse.y}));
+			socket.send(coding.encrypt({command: constant.COMMAND_TYPE.SHOOT, x1: player.x, y1: player.y, x2: gameInput.mouse.x, y2: gameInput.mouse.y}));
 		}
 	}
 
@@ -301,7 +195,7 @@ function drawCircle(centerX, centerY, radius) {
 
 //use as new createPlayer. If not this will be treated as function
 function createPlayer(id, x, y, reloadInterval) {
-	this.graphic = drawCircle(x, y, playerConfig.defaultSize);
+	this.graphic = drawCircle(0, 0, playerConfig.defaultSize);
 	this.id = id != undefined ? id : -1;
 	this.x = x != undefined ? x : 0;
 	this.y = y != undefined ? y : 0;
