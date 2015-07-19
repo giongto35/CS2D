@@ -9,8 +9,8 @@ var coding = require('../share/coding.js');
 var gameObject = require('./gameObject.js');
 var express = require('express');
 var app = express();
-var WebSocketServer = require('ws').Server;
-var socketServer = new WebSocketServer({port: 3030});
+var webSocketServer = require('ws').Server;
+var socketServer = new webSocketServer({port: 3030});
 var fs = require('fs');
 var configFilePath = 'server/config.yml';
 var curr_id = 0;
@@ -27,6 +27,10 @@ var curr_id = 0;
 // }
 
 // var config = loadConfig(configFilePath)
+
+var bulletConfig = {
+	speed: 1v
+};
 
 var players = [];
 var sockets = [];
@@ -48,15 +52,29 @@ function findIndex(arr, id) {
     return -1;
 }
 
-function processShootingEvent(socket, data) {
+function processMouseEvent(socketServer, socket, data) {
+	var deg = Math.atan2(data.x2 - data.x1, data.y2 - data.y1);
+	var dx = bulletConfig.speed * Math.sin(deg);
+	var dy = bulletConfig.speed * Math.cos(deg);
+	var date = new Date();
+	var stime = date.getTime() % 100000;
+	socketServer.broadcast(coding.encrypt({
+		command: constant.COMMAND_TYPE.SHOOT, 
+		id: data.id,
+		stime: stime,
+		x1: data.x1, 
+		y1: data.y1,
+		dx: dx,
+		dy: dy
+	}));	
 }
 
-function processKeyboardEvent(socket, data) {
+function processKeyboardEvent(socketServer, socket, data) {
 	var player = players[findIndex(players, data.id)];
 	if (data.key == constant.KEY_UP || data.key == constant.KEY_DOWN || data.key == constant.KEY_LEFT || data.key == constant.KEY_RIGHT) {
 		movePlayer(player, data.key - constant.KEY_LEFT);
 	}
-	socket.send(coding.encrypt({
+	socketServer.broadcast(coding.encrypt({
 		command: constant.COMMAND_TYPE.UPDATE, 
 		id: player.id, 
 		x: player.x, 
@@ -64,50 +82,79 @@ function processKeyboardEvent(socket, data) {
 	}));	
 }
 
+socketServer.broadcast = function broadcast(data) {
+	socketServer.clients.forEach(function each(client) {
+		client.send(data);
+	});
+};
+
+socketServer.sendOther = function sendOther(socket, data) {
+	socketServer.clients.forEach(function each(client) {
+  		if (socket !== client) {
+    		client.send(data);
+		}
+	});	
+};
+
 socketServer.on('connection', function connection(socket) {
 	console.log('A user connected. Assigning UserID...');
 
+	//send current players
+	for (var idx in players) {
+		// console.log(players[idx]);
+		var player = players[idx];
+		socket.send(coding.encrypt({
+			command: constant.COMMAND_TYPE.INIT,
+			id: player.id,
+			x: player.x,
+			y: player.y,
+			main: 0
+		}));
+	}
+
 	var player = new gameObject.Player(curr_id++, 10, 10);
 	players.push(player);
+	
 	socket.send(coding.encrypt({
 		command: constant.COMMAND_TYPE.INIT,
 		id: player.id,
 		x: player.x,
-		y: player.y
-	}))
+		y: player.y,
+		main: 1
+	}));
 
-	// socket.send(toBuffer(buffer), {binary: true}, function ack(error) {
-	// 	console.log(error);
-	// });
+	socketServer.sendOther(socket, coding.encrypt({
+		command: constant.COMMAND_TYPE.INIT,
+		id: player.id,
+		x: player.x,
+		y: player.y,
+		main: 0
+	}));
 
   	socket.on('message', function (mess) {
   		var data = coding.decrypt(mess);
 		if (data.command == constant.COMMAND_TYPE.KEYBOARD) {
-			processKeyboardEvent(socket, data);
+			processKeyboardEvent(socketServer, socket, data);
 		}
 		if (data.command == constant.COMMAND_TYPE.MOUSE) {
-			processShootingEvent(socket, data);
+			processMouseEvent(socketServer, socket, data);
 		}
  	});
 	// socket.emit('welcome', encrypt(PlayerSettings));
 
-	socket.on('playerConnected', function (player) {
+
+	socket.on('close', function () {
+		console.log(findIndex(players, player.id) + ' disconnected');
+		players.splice(findIndex(players, player.id));
+		socketServer.sendOther(socket, coding.encrypt({
+			command: constant.COMMAND_TYPE.DESTROY,
+			id: player.id
+		}));
 	});
 
 	// socket.on('ping', function () {
 	// 	socket.emit('pong');
 	// })
-
-	// socket.on('disconnect', function () {
-	// 	socket.broadcast.emit(
-	// 		'playerDisconnect',
-	// 		encrypt({playerList: users, disconnectName: playerName})
-	// 		)
-	// })
-
-	// socket.on('playerMove', function (data) {
-	// 	command = decrypt(data);
-	// 	if 
 
 	// })
 });

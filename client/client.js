@@ -1,3 +1,5 @@
+'use strict';
+
 var graphicStage = null;
 var graphicRenderer = null;
 
@@ -9,15 +11,16 @@ var xoffset = -gameWidth;
 var yoffset = -gameHeight;
 
 var bulletConfig = {
-	speed: 10
-}
+	speed: 0.001
+};
 
 var playerConfig = {
     border: 5,
     textColor: '#FFFFFF',
     textBorder: '#000000',
     textBorderSize: 3,
-    defaultSize: 30
+    defaultSize: 20,
+    defaultColor: 0x00FF00
 };
 
 var enemyConfig = {
@@ -25,7 +28,8 @@ var enemyConfig = {
     textColor: '#FFFFFF',
     textBorder: '#000000',
     textBorderSize: 3,
-    defaultSize: 30
+    defaultSize: 20,
+    defaultColor: 0xFF0000
 };
 
 var socket = new WebSocket('ws://127.0.0.1:3030');
@@ -41,8 +45,9 @@ var KEY_DOWN = 40;
 var bulletArr = [];
 var gameObj = [];
 var Obj = [];
-var player = new Object(); //create by new player
+var player = {}; //create by new player
 var gameInput = {mouse: {down: false, x: 0, y: 0}, keyboard: {37: false, 38: false, 39: false, 40: false}};
+var players = [];
 
 window.onload = function() {
 	window.addEventListener('keydown', function (e) {
@@ -89,17 +94,37 @@ function mouseMoveEvent(e) {
 	gameInput.mouse.y = e.clientY;
 }
 
-function shootBullet(player, x1, y1, x2, y2) {
-	date = new Date();
-	if (date.getTime() - player.shotTime > player.reloadInterval) {
-		bulletArr.push(new createBullet(x1, y1, x2, y2));	
-		player.shotTime = date.getTime();
-	}
+function shootBullet(data) {
+	console.log(data);
+	bulletArr.push(new Bullet(data.stime, data.x1, data.y1, data.dx, data.dy));	
+}
+
+function findIndex(arr, id) {
+    var len = arr.length;
+    while (len--) {
+        if (arr[len].id === id) {
+            return len;
+        }
+    }
+    return -1;
 }
 
 function updatePosition(data) {
+	var player = players[findIndex(players, data.id)]; 
 	player.x = data.x;
 	player.y = data.y;
+}
+
+function initPlayer(data) {
+	var tempPlayer = new Player(data.id, data.x, data.y, data.main === 1);
+	if (data.main == 1) {
+		player = tempPlayer;
+	} 
+	players.push(tempPlayer);					
+}
+
+function removePlayer(data) {
+	players.splice(findIndex(players, data.id), 1);
 }
 
 function setupSocket(socket) {
@@ -117,12 +142,16 @@ function setupSocket(socket) {
 		// console.log(data);
 		switch (data.command) {
 			case constant.COMMAND_TYPE.INIT:
-				//construct player
-				player = new createPlayer(data.id, data.x, data.y);
+				initPlayer(data);
 				break;
 			case constant.COMMAND_TYPE.UPDATE:
 				updatePosition(data);
 				break;
+			case constant.COMMAND_TYPE.DESTROY:
+				removePlayer(data);
+				break;
+			case constant.COMMAND_TYPE.SHOOT:
+				shootBullet(data);
 		}
   	}
 
@@ -138,34 +167,46 @@ function setupGraphic() {
 	          };
 	})();
 
-	var canvas = document.getElementById("myCanvas");
-    graphicRenderer = PIXI.autoDetectRenderer(screenWidth, screenHeight, canvas, false, true);	
+	// var canvas = document.getElementById("myCanvas");
+    graphicRenderer = PIXI.autoDetectRenderer(screenWidth, screenHeight, {antialias: true});	
     document.body.appendChild(graphicRenderer.view);
-	graphicRenderer.view.style.position = "absolute";
-	graphicRenderer.view.style.top = "0px";
-	graphicRenderer.view.style.left = "0px";
+	graphicRenderer.view.style.position = 'absolute';
+	graphicRenderer.view.style.top = '0px';
+	graphicRenderer.view.style.left = '0px';
 	graphicRenderer.backgroundColor = 0xFFFFFF;
     graphicStage = new PIXI.Container();
 	requestAnimationFrame(animate);
+}
+
+function sendMouseEvent(id, x1, y1, x2, y2) {
+	var date = new Date();
+	if (date.getTime() - player.shotTime > player.reloadInterval) {
+		socket.send(coding.encrypt({command: constant.COMMAND_TYPE.MOUSE, id: id, x1: x1, y1: y1, x2: x2, y2: y2}));
+		player.shotTime = date;
+	}
+	// socket.send(coding.encrypt({command: constant.COMMAND_TYPE.SHOOT, id: player.id, stime: stime, x1: player.x, y1: player.y, dx: dx, dy: dy}));
+}
+
+function sendKeyboardEvent(id, m) {
+	socket.send(coding.encrypt({command: constant.COMMAND_TYPE.KEYBOARD, id: id, key: m}));
 }
 
 function updateGameState() {
 	//update by game input
 	for (var m in gameInput.keyboard) {
 		if (gameInput.keyboard[m]) {
-			socket.send(coding.encrypt({command: constant.COMMAND_TYPE.KEYBOARD, id: player.id, key: m}));
+			sendKeyboardEvent(player.id, m);
 		}
-		if (gameInput.mouse.down) {
-			shootBullet(player, player.x, player.y, gameInput.mouse.x, gameInput.mouse.y);
-			socket.send(coding.encrypt({command: constant.COMMAND_TYPE.SHOOT, x1: player.x, y1: player.y, x2: gameInput.mouse.x, y2: gameInput.mouse.y}));
-		}
+	}
+	if (gameInput.mouse.down) {
+		sendMouseEvent(player.id, player.x, player.y, gameInput.mouse.x, gameInput.mouse.y);
 	}
 
 	//update Object
 	for (var i = gameObj.length - 1; i >= 0; i--) {
-		obj = gameObj[i];
+		var obj = gameObj[i];
 		//obj is no longer available because deleted in invalid
-		if (obj.update != undefined) {
+		if (obj.update !== undefined) {
 			obj.update();
 		}
 		if (obj.invalid()) {
@@ -185,21 +226,21 @@ function animate() {
     graphicRenderer.render(graphicStage);
 }
 
-function drawCircle(centerX, centerY, radius) {
+function drawCircle(centerX, centerY, radius, color) {
 	var circle = new PIXI.Graphics();
     circle.lineStyle ( 2, 0x000100,  1);
-	circle.beginFill(0xFF66FF);
+	circle.beginFill(color);
 	circle.drawCircle(centerX, centerY, radius);	
 	return circle;
 }
 
-//use as new createPlayer. If not this will be treated as function
-function createPlayer(id, x, y, reloadInterval) {
-	this.graphic = drawCircle(0, 0, playerConfig.defaultSize);
+function Player(id, x, y, mainChar, reloadInterval) {
+	var color = mainChar === true ? playerConfig.defaultColor : enemyConfig.defaultColor;
+	this.graphic = drawCircle(0, 0, playerConfig.defaultSize, color);
 	this.id = id != undefined ? id : -1;
 	this.x = x != undefined ? x : 0;
 	this.y = y != undefined ? y : 0;
-	this.reloadInterval = reloadInterval != undefined ? reloadInterval : 10;
+	this.reloadInterval = reloadInterval != undefined ? reloadInterval : 100;
 	this.shotTime = -1000000;
 
 	graphicStage.addChild(this.graphic);
@@ -208,47 +249,47 @@ function createPlayer(id, x, y, reloadInterval) {
 	this.updateGraphic = function() {
 		this.graphic.x = this.x;
 		this.graphic.y = this.y;
-	}
+	};
 
 	this.invalid = function() {
 
-	}
+	};
 
 	this.update = function() {
 		this.updateGraphic();
-	}
+	};
 
 }
 
-function createBullet(x1, y1, x2, y2) {
-	this.graphic = drawCircle(0, 0, 1);
-	this.speed = bulletConfig.speed;
-	this.x = x1;
-	this.y = y1;
+function Bullet(stime, x1, y1, dx, dy) {
+	this.graphic = drawCircle(0, 0, 1, 0x000000);
+	this.sx = x1;
+	this.sy = y1;
+	this.dx = dx;
+	this.dy = dy;
+	this.stime = stime;
 
     // graphicObj.push(this);
 	graphicStage.addChild(this.graphic);
 	gameObj.push(this);
-    var deg = Math.atan2(y2 - y1, x2 - x1);
-    var deltaY = this.speed * Math.sin(deg);
-    var deltaX = this.speed * Math.cos(deg);
 
     this.updateGraphic = function() {
     	this.graphic.x = this.x;
     	this.graphic.y = this.y;
-    }
+    };
 
 	this.invalid = function() {
 		return (this.x < 0 || this.x > gameWidth || this.y < 0 || this.y > gameHeight);
-	}
+	};
 
 	this.update = function() {
-		this.x = this.x + deltaX;
-		this.y = this.y + deltaY;
-		this.graphic.x = this.x;
-		this.graphic.y = this.y;
+		var date = new Date();
+		var cur = date.getTime() % 100000;
+		console.log(cur + ' ' + this.stime);
+		this.x = this.sx + this.dx * (cur - this.stime);
+		this.y = this.sy + this.dy * (cur - this.stime);
 		this.updateGraphic();
-	}
+	};
 
 	this.destroy = function() {
 		this.graphic.clear();
