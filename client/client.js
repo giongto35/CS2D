@@ -95,7 +95,6 @@ function mouseMoveEvent(e) {
 }
 
 function shootBullet(data) {
-	console.log(data);
 	bulletArr.push(new Bullet(data.stime, data.x1, data.y1, data.dx, data.dy));	
 }
 
@@ -124,7 +123,13 @@ function initPlayer(data) {
 }
 
 function removePlayer(data) {
-	players.splice(findIndex(players, data.id), 1);
+	if (data.id == player.id) {
+		// player.destroy();
+		socket.close();
+	}
+	var idx = findIndex(players, data.id);
+	players[idx].destroy();
+	players.splice(idx, 1);
 }
 
 function setupSocket(socket) {
@@ -139,7 +144,6 @@ function setupSocket(socket) {
 
 	socket.onmessage = function (event) {
 		var data = coding.decrypt(event.data);
-		// console.log(data);
 		switch (data.command) {
 			case constant.COMMAND_TYPE.INIT:
 				initPlayer(data);
@@ -211,7 +215,6 @@ function updateGameState() {
 		}
 		if (obj.invalid()) {
 			obj.destroy();
-			gameObj.splice(i, 1);
 		}
 	}
 }
@@ -237,10 +240,10 @@ function drawCircle(centerX, centerY, radius, color) {
 function Player(id, x, y, mainChar, reloadInterval) {
 	var color = mainChar === true ? playerConfig.defaultColor : enemyConfig.defaultColor;
 	this.graphic = drawCircle(0, 0, playerConfig.defaultSize, color);
-	this.id = id != undefined ? id : -1;
-	this.x = x != undefined ? x : 0;
-	this.y = y != undefined ? y : 0;
-	this.reloadInterval = reloadInterval != undefined ? reloadInterval : 100;
+	this.id = id !== undefined ? id : -1;
+	this.x = x !== undefined ? x : 0;
+	this.y = y !== undefined ? y : 0;
+	this.reloadInterval = reloadInterval !== undefined ? reloadInterval : 100;
 	this.shotTime = -1000000;
 
 	graphicStage.addChild(this.graphic);
@@ -259,12 +262,25 @@ function Player(id, x, y, mainChar, reloadInterval) {
 		this.updateGraphic();
 	};
 
+	this.destroy = function() {
+		for (var iObj in gameObj) {
+			if (gameObj[iObj] === this) {
+				gameObj.splice(iObj, 1);
+				break;
+			}
+		}
+		this.graphic.clear();
+		delete this.graphic;
+		graphicStage.removeChild(this.graphic);
+	};
 }
 
 function Bullet(stime, x1, y1, dx, dy) {
 	this.graphic = drawCircle(0, 0, 1, 0x000000);
 	this.sx = x1;
 	this.sy = y1;
+	this.x = x1;
+	this.y = y1;
 	this.dx = dx;
 	this.dy = dy;
 	this.stime = stime;
@@ -279,23 +295,29 @@ function Bullet(stime, x1, y1, dx, dy) {
     };
 
 	this.invalid = function() {
+		this.update();
 		return (this.x < 0 || this.x > gameWidth || this.y < 0 || this.y > gameHeight);
 	};
 
 	this.update = function() {
 		var date = new Date();
 		var cur = date.getTime() % 100000;
-		console.log(cur + ' ' + this.stime);
 		this.x = this.sx + this.dx * (cur - this.stime);
 		this.y = this.sy + this.dy * (cur - this.stime);
 		this.updateGraphic();
 	};
 
 	this.destroy = function() {
+		for (var iObj in gameObj) {
+			if (gameObj[iObj] === this) {
+				gameObj.splice(iObj, 1);
+				break;
+			}
+		}
 		this.graphic.clear();
 		delete this.graphic;
 		graphicStage.removeChild(this.graphic);
-	}
+	};
 }
 
 setupSocket(socket);

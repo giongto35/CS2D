@@ -29,10 +29,20 @@ var curr_id = 0;
 // var config = loadConfig(configFilePath)
 
 var bulletConfig = {
-	speed: 1v
+	speed: 1
+};
+
+var playerConfig = {
+    border: 5,
+    textColor: '#FFFFFF',
+    textBorder: '#000000',
+    textBorderSize: 3,
+    defaultSize: 20,
+    defaultColor: 0x00FF00
 };
 
 var players = [];
+var bullets = [];
 var sockets = [];
 
 console.log('Listening on port 3030 ...');
@@ -58,6 +68,7 @@ function processMouseEvent(socketServer, socket, data) {
 	var dy = bulletConfig.speed * Math.cos(deg);
 	var date = new Date();
 	var stime = date.getTime() % 100000;
+	bullets.push(new gameObject.Bullet(data.id, stime, data.x1, data.y1, dx, dy));
 	socketServer.broadcast(coding.encrypt({
 		command: constant.COMMAND_TYPE.SHOOT, 
 		id: data.id,
@@ -112,7 +123,7 @@ socketServer.on('connection', function connection(socket) {
 		}));
 	}
 
-	var player = new gameObject.Player(curr_id++, 10, 10);
+	var player = new gameObject.Player(curr_id++, 10, 10, socket);
 	players.push(player);
 	
 	socket.send(coding.encrypt({
@@ -144,8 +155,8 @@ socketServer.on('connection', function connection(socket) {
 
 
 	socket.on('close', function () {
-		console.log(findIndex(players, player.id) + ' disconnected');
-		players.splice(findIndex(players, player.id));
+		console.log(player.id + ' disconnected');
+		players.splice(findIndex(players, player.id), 1);
 		socketServer.sendOther(socket, coding.encrypt({
 			command: constant.COMMAND_TYPE.DESTROY,
 			id: player.id
@@ -158,3 +169,40 @@ socketServer.on('connection', function connection(socket) {
 
 	// })
 });
+
+function dist(x1, y1, x2, y2) {
+	return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+}
+
+function checkCollision(bullet, player) {
+	bullet.update();
+	return (dist(bullet.x, bullet.y, player.x, player.y) < playerConfig.defaultSize);
+}
+
+function gameLoop() {
+	for (var iPlayer = players.length - 1; iPlayer >= 0; iPlayer--) {
+		var player = players[iPlayer];
+		for (var iBullet in bullets) {
+			var bullet = bullets[iBullet];
+			if (bullet.playerId != player.id && checkCollision(bullet, player)) {
+				// players.splice(iPlayer, 1);
+				player.socket.send(coding.encrypt({
+					command: constant.COMMAND_TYPE.DESTROY,
+					id: player.id
+				}));
+				break;
+			}
+		}
+	}	
+
+	//update Object
+	// console.log(bullets.length);
+	for (var i = bullets.length - 1; i >= 0; i--) {
+		var bullet = bullets[i];
+		if (bullet.invalid()) {
+			bullets.splice(i, 1);
+		}
+	}
+}
+
+setInterval(gameLoop, 1000 / 60);
