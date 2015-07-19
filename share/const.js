@@ -5,8 +5,11 @@
 //Shared
 (function(exports){
 
-    // your code goes here
+	// Game config
+	exports.GAME_WIDTH = 10000;
+	exports.GAME_HEIGHT = 10000;
 
+    // Key config
 	exports.KEY_LEFT = 37;
 	exports.KEY_UP = 38;
 	exports.KEY_RIGHT = 39;

@@ -5,10 +5,8 @@ var graphicRenderer = null;
 
 var screenWidth = window.innerWidth;
 var screenHeight = window.innerHeight;
-var gameWidth = screenWidth ;
-var gameHeight = screenHeight ;
-var xoffset = -gameWidth;
-var yoffset = -gameHeight;
+var xoffset = -constant.GAME_WIDTH;
+var yoffset = -constant.GAME_HEIGHT;
 
 var bulletConfig = {
 	speed: 0.001
@@ -296,7 +294,7 @@ function Bullet(stime, x1, y1, dx, dy) {
 
 	this.invalid = function() {
 		this.update();
-		return (this.x < 0 || this.x > gameWidth || this.y < 0 || this.y > gameHeight);
+		return (this.x < 0 || this.x > constant.GAME_WIDTH || this.y < 0 || this.y > constant.GAME_HEIGHT);
 	};
 
 	this.update = function() {

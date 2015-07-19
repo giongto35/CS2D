@@ -50,6 +50,13 @@ console.log('Listening on port 3030 ...');
 function movePlayer(player, d) {
 	player.x += constant.DIR[d].x;
 	player.y += constant.DIR[d].y;
+	for (var iPlayer in players) {
+		if (players[iPlayer] !== player && checkCollision(player, players[iPlayer], 2 * playerConfig.defaultSize)) {
+			player.x -= constant.DIR[d].x;
+			player.y -= constant.DIR[d].y;
+			return;
+		}
+	}
 }
 
 function findIndex(arr, id) {
@@ -174,9 +181,13 @@ function dist(x1, y1, x2, y2) {
 	return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
 }
 
-function checkCollision(bullet, player) {
+function checkCollision(obj1, obj2, lim) {
+	return (dist(obj1.x, obj1.y, obj2.x, obj2.y) < lim);
+}
+
+function checkHit(bullet, player) {
 	bullet.update();
-	return (dist(bullet.x, bullet.y, player.x, player.y) < playerConfig.defaultSize);
+	return checkCollision(bullet, player, playerConfig.defaultSize);
 }
 
 function gameLoop() {
@@ -184,7 +195,7 @@ function gameLoop() {
 		var player = players[iPlayer];
 		for (var iBullet in bullets) {
 			var bullet = bullets[iBullet];
-			if (bullet.playerId != player.id && checkCollision(bullet, player)) {
+			if (bullet.playerId != player.id && checkHit(bullet, player)) {
 				// players.splice(iPlayer, 1);
 				player.socket.send(coding.encrypt({
 					command: constant.COMMAND_TYPE.DESTROY,

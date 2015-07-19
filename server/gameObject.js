@@ -1,3 +1,5 @@
+var constant = require('../share/const.js');
+
 var Player = function (id, x, y, socket) {
 	this.id = id;
 	this.x = x;
@@ -17,7 +19,7 @@ var Bullet = function (id, stime, x1, y1, dx, dy) {
 
 	this.invalid = function() {
 		this.update();
-		return (this.x < 0 || this.x > 1000 || this.y < 0 || this.y > 1000	);
+		return (this.x < 0 || this.x > constant.GAME_WIDTH || this.y < 0 || this.y > constant.GAME_HEIGHT);
 	};
 
 	this.update = function() {
