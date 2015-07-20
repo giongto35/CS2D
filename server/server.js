@@ -15,43 +15,21 @@ var fs = require('fs');
 var configFilePath = 'server/config.yml';
 var curr_id = 0;
 
-// function loadConfig(configFilePath) {
-// 	if (!fs.existsSync(configFilePath)) {
-// 		console.log("Config file not found!");
-// 		return;
-// 	}
-
-// 	return {
-// 		speed: config.speed
-// 	};	
-// }
-
-// var config = loadConfig(configFilePath)
-
-var bulletConfig = {
-	speed: 1
-};
-
-var playerConfig = {
-    border: 5,
-    textColor: '#FFFFFF',
-    textBorder: '#000000',
-    textBorderSize: 3,
-    defaultSize: 20,
-    defaultColor: 0x00FF00
-};
-
 var players = [];
 var bullets = [];
 var sockets = [];
 
-console.log('Listening on port 3030 ...');
+function LOG(message) {
+	console.log(message);
+}
+
+LOG('Listening on port 3030 ...');
 
 function movePlayer(player, d) {
 	player.x += constant.DIR[d].x;
 	player.y += constant.DIR[d].y;
 	for (var iPlayer in players) {
-		if (players[iPlayer] !== player && checkCollision(player, players[iPlayer], 2 * playerConfig.defaultSize)) {
+		if (players[iPlayer] !== player && checkCollision(player, players[iPlayer], 2 * constant.PLAYER_CONFIG.DEFAULT_SIZE)) {
 			player.x -= constant.DIR[d].x;
 			player.y -= constant.DIR[d].y;
 			return;
@@ -71,11 +49,15 @@ function findIndex(arr, id) {
 
 function processMouseEvent(socketServer, socket, data) {
 	var deg = Math.atan2(data.x2 - data.x1, data.y2 - data.y1);
-	var dx = bulletConfig.speed * Math.sin(deg);
-	var dy = bulletConfig.speed * Math.cos(deg);
+	var dx = constant.BULLET_CONFIG.SPEED * Math.sin(deg);
+	var dy = constant.BULLET_CONFIG.SPEED * Math.cos(deg);
 	var date = new Date();
 	var stime = date.getTime() % 100000;
 	bullets.push(new gameObject.Bullet(data.id, stime, data.x1, data.y1, dx, dy));
+
+	LOG('INFO: Broadcast SHOOT package');
+	LOG({command: constant.COMMAND_TYPE.SHOOT, id: data.id, stime: stime, x1: data.x1, y1: data.y1, dx: dx, dy: dy});
+
 	socketServer.broadcast(coding.encrypt({
 		command: constant.COMMAND_TYPE.SHOOT, 
 		id: data.id,
@@ -115,11 +97,12 @@ socketServer.sendOther = function sendOther(socket, data) {
 };
 
 socketServer.on('connection', function connection(socket) {
-	console.log('A user connected. Assigning UserID...');
+	LOG('A user connected. Assigning UserID...');
 
 	//send current players
+	LOG('INFO: A player connected');
 	for (var idx in players) {
-		// console.log(players[idx]);
+		// LOG(players[idx]);
 		var player = players[idx];
 		socket.send(coding.encrypt({
 			command: constant.COMMAND_TYPE.INIT,
@@ -129,6 +112,7 @@ socketServer.on('connection', function connection(socket) {
 			main: 0
 		}));
 	}
+	LOG('INFO: Sent INIT package for existing sockets');
 
 	var player = new gameObject.Player(curr_id++, 10, 10, socket);
 	players.push(player);
@@ -140,6 +124,7 @@ socketServer.on('connection', function connection(socket) {
 		y: player.y,
 		main: 1
 	}));
+	LOG('INFO: Sent INIT package to initialize socket ' + player.id);
 
 	socketServer.sendOther(socket, coding.encrypt({
 		command: constant.COMMAND_TYPE.INIT,
@@ -148,26 +133,34 @@ socketServer.on('connection', function connection(socket) {
 		y: player.y,
 		main: 0
 	}));
+	LOG('INFO: Sent INIT package to all sockets except socket ' + player.id);
 
   	socket.on('message', function (mess) {
   		var data = coding.decrypt(mess);
+		LOG('INFO: Received a package');
+		LOG(data);
 		if (data.command == constant.COMMAND_TYPE.KEYBOARD) {
+			LOG('INFO: Received KEYBOARD package');
 			processKeyboardEvent(socketServer, socket, data);
+			LOG('INFO: Processed Keyboard event');
 		}
 		if (data.command == constant.COMMAND_TYPE.MOUSE) {
+			LOG('INFO: Received MOUSE package');
 			processMouseEvent(socketServer, socket, data);
+			LOG('INFO: Processed Mouse event');
 		}
  	});
 	// socket.emit('welcome', encrypt(PlayerSettings));
 
 
 	socket.on('close', function () {
-		console.log(player.id + ' disconnected');
+		LOG('INFO: ' + player.id + ' disconnected');
 		players.splice(findIndex(players, player.id), 1);
 		socketServer.sendOther(socket, coding.encrypt({
 			command: constant.COMMAND_TYPE.DESTROY,
 			id: player.id
 		}));
+		LOG('INFO: Sent DESTROY package to all sockets except socket ' + player.id);
 	});
 
 	// socket.on('ping', function () {
@@ -187,7 +180,7 @@ function checkCollision(obj1, obj2, lim) {
 
 function checkHit(bullet, player) {
 	bullet.update();
-	return checkCollision(bullet, player, playerConfig.defaultSize);
+	return checkCollision(bullet, player, constant.PLAYER_CONFIG.DEFAULT_SIZE);
 }
 
 function gameLoop() {
@@ -207,7 +200,7 @@ function gameLoop() {
 	}	
 
 	//update Object
-	// console.log(bullets.length);
+	// LOG(bullets.length);
 	for (var i = bullets.length - 1; i >= 0; i--) {
 		var bullet = bullets[i];
 		if (bullet.invalid()) {

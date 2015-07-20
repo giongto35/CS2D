@@ -5,6 +5,28 @@
 //Shared
 (function(exports){
 
+	exports.BULLET_CONFIG = {
+		SPEED: 1
+	};
+
+	exports.PLAYER_CONFIG = {
+	    BORDER: 5,
+	    TEXT_COLOR: '#FFFFFF',
+	    TEXT_BORDER: '#000000',
+	    TEXT_BORDER_SIZE: 3,
+	    DEFAULT_SIZE: 20,
+	    DEFAULT_COLOR: 0x00FF00
+	};
+
+	exports.ENEMY_CONFIG = {
+	    BORDER: 5,
+	    TEXT_COLOR: '#FFFFFF',
+	    TEXT_BORDER: '#000000',
+	    TEXT_BORDER_SIZE: 3,
+	    DEFAULT_SIZE: 20,
+	    DEFAULT_COLOR: 0xFF0000
+	};
+
 	// Game config
 	exports.GAME_WIDTH = 10000;
 	exports.GAME_HEIGHT = 10000;

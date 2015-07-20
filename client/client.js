@@ -8,28 +8,6 @@ var screenHeight = window.innerHeight;
 var xoffset = -constant.GAME_WIDTH;
 var yoffset = -constant.GAME_HEIGHT;
 
-var bulletConfig = {
-	speed: 0.001
-};
-
-var playerConfig = {
-    border: 5,
-    textColor: '#FFFFFF',
-    textBorder: '#000000',
-    textBorderSize: 3,
-    defaultSize: 20,
-    defaultColor: 0x00FF00
-};
-
-var enemyConfig = {
-    border: 5,
-    textColor: '#FFFFFF',
-    textBorder: '#000000',
-    textBorderSize: 3,
-    defaultSize: 20,
-    defaultColor: 0xFF0000
-};
-
 var socket = new WebSocket('ws://127.0.0.1:3030');
 socket.binaryType = 'arraybuffer';
 
@@ -42,7 +20,6 @@ var KEY_DOWN = 40;
 
 var bulletArr = [];
 var gameObj = [];
-var Obj = [];
 var player = {}; //create by new player
 var gameInput = {mouse: {down: false, x: 0, y: 0}, keyboard: {37: false, 38: false, 39: false, 40: false}};
 var players = [];
@@ -67,7 +44,7 @@ window.onload = function() {
 	window.addEventListener('mouseup', function (e) {
 		mouseUpEvent(e);
 	}, false);
-}
+};
 
 function keyDownEvent(e) {
 	var key = e.which || e.keyCode;
@@ -236,8 +213,8 @@ function drawCircle(centerX, centerY, radius, color) {
 }
 
 function Player(id, x, y, mainChar, reloadInterval) {
-	var color = mainChar === true ? playerConfig.defaultColor : enemyConfig.defaultColor;
-	this.graphic = drawCircle(0, 0, playerConfig.defaultSize, color);
+	var color = mainChar === true ? constant.PLAYER_CONFIG.DEFAULT_COLOR : constant.ENEMY_CONFIG.DEFAULT_COLOR;
+	this.graphic = drawCircle(0, 0, constant.PLAYER_CONFIG.DEFAULT_SIZE, color);
 	this.id = id !== undefined ? id : -1;
 	this.x = x !== undefined ? x : 0;
 	this.y = y !== undefined ? y : 0;
