@@ -2,7 +2,6 @@
 'use strict';
 require('path');
 require('http').Server(app);
-require('arraybuffer-to-buffer');
 
 var constant = require('../share/const.js');
 var coding = require('../share/coding.js');
