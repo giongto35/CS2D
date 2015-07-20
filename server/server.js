@@ -23,7 +23,7 @@ function LOG(message) {
 	console.log(message);
 }
 
-LOG('Listening on port 3030 ...');
+LOG('Listening on port ' + portNum + ' ...');
 
 function movePlayer(player, d) {
 	player.x += constant.DIR[d].x;
