@@ -31,20 +31,20 @@ function LOG(message) {
 // app.set('views', __dirname + '/../client');
 app.use(express.static(__dirname + '/../client'));
 
-app.get('/share/const.js', function(request, response) {
-	response.sendFile(path.resolve(__dirname + '/../share/const.js'));
-});
+// app.get('/share/const.js', function(request, response) {
+// 	response.sendFile(path.resolve(__dirname + '/../share/const.js'));
+// });
 
-app.get('/share/coding.js', function(request, response) {
-	response.sendFile(path.resolve(__dirname + '/../share/coding.js'));
-});
+// app.get('/share/coding.js', function(request, response) {
+// 	response.sendFile(path.resolve(__dirname + '/../share/coding.js'));
+// });
 
 http.listen( portNum, ipaddress, function() {
-	LOG('Listening on port ' + portNum + ' ...');
+	LOG('Listening on ' + ipaddress + ':' + portNum + ' ...');
 });
 
 // var socketServer = new webSocketServer({server: http});
-var socketServer = new webSocketServer({port: 3000});
+var socketServer = new webSocketServer({port: portNum});
 
 
 function movePlayer(player, d) {
