@@ -47,7 +47,8 @@ http.listen( portNum, ipaddress, function() {
 	LOG('Listening on port ' + portNum + ' ...');
 });
 
-var socketServer = new webSocketServer({server: http});
+// var socketServer = new webSocketServer({server: http});
+var socketServer = new webSocketServer({port: 3000});
 
 
 function movePlayer(player, d) {
