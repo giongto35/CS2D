@@ -39,10 +39,6 @@ app.get('/share/coding.js', function(request, response) {
 	response.sendFile(path.resolve(__dirname + '/../share/coding.js'));
 });
 
-app.get('/', function(request, response) {
-	response.render(__dirname + 'index.html');
-});
-
 http.listen( portNum, ipaddress, function() {
 	LOG('Listening on port ' + portNum + ' ...');
 });
