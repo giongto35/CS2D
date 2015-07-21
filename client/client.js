@@ -7,8 +7,8 @@ var screenWidth = window.innerWidth;
 var screenHeight = window.innerHeight;
 var xoffset = -constant.GAME_WIDTH;
 var yoffset = -constant.GAME_HEIGHT;
-// var socket = new WebSocket('ws://127.0.0.1');
-// socket.binaryType = 'arraybuffer';
+var socket = new WebSocket('ws://127.0.0.1:3000');
+socket.binaryType = 'arraybuffer';
 
 //make register function for command
 
