@@ -25,10 +25,6 @@ function LOG(message) {
 }
 
 
-// app.use(express.static(__dirname + '/../client'));
-// views is directory for all template files
-
-// app.set('views', __dirname + '/../client');
 app.use(express.static(__dirname + '/../client'));
 
 app.get('/share/const.js', function(request, response) {
@@ -43,8 +39,8 @@ http.listen( portNum, ipaddress, function() {
 	LOG('Listening on ' + ipaddress + ':' + portNum + ' ...');
 });
 
-// var socketServer = new webSocketServer({server: http});
-var socketServer = new webSocketServer({port: 3000});
+var socketServer = new webSocketServer({server: http});
+// var socketServer = new webSocketServer({port: 3000});
 
 
 function movePlayer(player, d) {
