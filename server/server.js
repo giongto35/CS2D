@@ -7,7 +7,6 @@ var coding = require('../share/coding.js');
 var gameObject = require('./gameObject.js');
 var express = require('express');
 var portNum = Number(process.env.PORT || 3030);
-var ipaddress = process.env.IP || '0.0.0.0';
 var app = express();
 var http = require('http').Server(app);
 var webSocketServer = require('ws').Server;
@@ -35,12 +34,12 @@ app.get('/share/coding.js', function(request, response) {
 	response.sendFile(path.resolve(__dirname + '/../share/coding.js'));
 });
 
-http.listen( portNum, ipaddress, function() {
-	LOG('Listening on ' + ipaddress + ':' + portNum + ' ...');
+http.listen(portNum, function() {
+	LOG('Listening on ' + portNum + ' ...');
 });
 
-// var socketServer = new webSocketServer({server: http});
-var socketServer = new webSocketServer({port: 3000});
+var socketServer = new webSocketServer({server: http});
+// var socketServer = new webSocketServer({port: 3000});
 
 
 function movePlayer(player, d) {
@@ -89,8 +88,17 @@ function processMouseEvent(socketServer, socket, data) {
 
 function processKeyboardEvent(socketServer, socket, data) {
 	var player = players[findIndex(players, data.id)];
-	if (data.key == constant.KEY_UP || data.key == constant.KEY_DOWN || data.key == constant.KEY_LEFT || data.key == constant.KEY_RIGHT) {
-		movePlayer(player, data.key - constant.KEY_LEFT);
+	if (data.key == constant.KEY_LEFT || data.key == constant.KEY_A) {
+		movePlayer(player, 0);
+	}		
+	if (data.key == constant.KEY_UP || data.key == constant.KEY_W) {
+		movePlayer(player, 1);
+	}
+	if (data.key == constant.KEY_RIGHT || data.key == constant.KEY_D) {
+		movePlayer(player, 2);
+	}
+	if (data.key == constant.KEY_DOWN || data.key == constant.KEY_S) {
+		movePlayer(player, 3);
 	}
 	socketServer.broadcast(coding.encrypt({
 		command: constant.COMMAND_TYPE.UPDATE, 

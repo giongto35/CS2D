@@ -37,8 +37,15 @@
 	exports.KEY_RIGHT = 39;
 	exports.KEY_DOWN = 40;
 
+	exports.KEY_W = 87;
+	exports.KEY_S = 83;
+	exports.KEY_A = 65;
+	exports.KEY_D = 68;
+
 	//make register function for command
 	//enum
+	//make register function for command
+
 	exports.COMMAND_TYPE = {INIT: 0, DESTROY: 1, KEYBOARD: 2, MOUSE: 3, UPDATE: 4, SHOOT: 5};
 	exports.PACK = [
 		{id: 'Int32', x: 'Int32', y: 'Int32', main: 'Int32'}, //INIT

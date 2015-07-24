@@ -7,21 +7,16 @@ var screenWidth = window.innerWidth;
 var screenHeight = window.innerHeight;
 var xoffset = -constant.GAME_WIDTH;
 var yoffset = -constant.GAME_HEIGHT;
-var socket = new WebSocket('ws://0.0.0.0:3000');
+var host = location.origin.replace(/^http/, 'ws');
+var socket = new WebSocket(host);
 socket.binaryType = 'arraybuffer';
-
-//make register function for command
-
-var KEY_LEFT = 37;
-var KEY_UP = 38;
-var KEY_RIGHT = 39;
-var KEY_DOWN = 40;
 
 var bulletArr = [];
 var gameObj = [];
 var player = {}; //create by new player
 var gameInput = {mouse: {down: false, x: 0, y: 0}, keyboard: {37: false, 38: false, 39: false, 40: false}};
 var players = [];
+var running = true;
 
 window.onload = function() {
 	window.addEventListener('keydown', function (e) {
@@ -98,7 +93,9 @@ function initPlayer(data) {
 
 function removePlayer(data) {
 	if (data.id == player.id) {
-		// player.destroy();
+		player.destroy();
+		running = false;
+		alert("You got hit. Reload to replay");
 		socket.close();
 	}
 	var idx = findIndex(players, data.id);
@@ -194,7 +191,12 @@ function updateGameState() {
 }
 
 function gameLoop() {
-    updateGameState();
+	if (running) {
+    	updateGameState();
+	}
+    else {
+
+    }
 }
 
 function animate() {
@@ -202,6 +204,49 @@ function animate() {
     gameLoop();
     graphicRenderer.render(graphicStage);
 }
+/**
+ * @author Mat Groves http://matgroves.com/ @Doormat23
+ */
+ 
+/**
+ * This is the base class for creating a PIXI filter. Currently only webGL supports filters.
+ * If you want to make a custom filter this should be your base class.
+ * @class AbstractFilter
+ * @constructor
+ * @param fragmentSrc {Array} The fragment source in an array of strings.
+ * @param uniforms {Object} An object containing the uniforms for this filter.
+ */
+PIXI.AbstractFilter = function(fragmentSrc, uniforms)
+{
+    /**
+    * An array of passes - some filters contain a few steps this array simply stores the steps in a liniear fashion.
+    * For example the blur filter has two passes blurX and blurY.
+    * @property passes
+    * @type Array an array of filter objects
+    * @private
+    */
+    this.passes = [this];
+ 
+    this.shaders = [];
+    
+    this.dirty = true;
+ 
+    this.padding = 0;
+ 
+    this.uniforms = uniforms || {};
+
+    this.fragmentSrc = fragmentSrc || [];
+};
+ 
+PIXI.AbstractFilter.prototype.constructor = PIXI.AbstractFilter;
+ 
+PIXI.AbstractFilter.prototype.syncUniforms = function()
+{
+    for(var i=0,j=this.shaders.length; i<j; i++)
+    {
+        this.shaders[i].dirty = true;
+    }
+};
 
 function drawCircle(centerX, centerY, radius, color) {
 	var circle = new PIXI.Graphics();
@@ -212,6 +257,7 @@ function drawCircle(centerX, centerY, radius, color) {
 }
 
 function Player(id, x, y, mainChar, reloadInterval) {
+
 	var color = mainChar === true ? constant.PLAYER_CONFIG.DEFAULT_COLOR : constant.ENEMY_CONFIG.DEFAULT_COLOR;
 	this.graphic = drawCircle(0, 0, constant.PLAYER_CONFIG.DEFAULT_SIZE, color);
 	this.id = id !== undefined ? id : -1;
@@ -250,7 +296,11 @@ function Player(id, x, y, mainChar, reloadInterval) {
 }
 
 function Bullet(stime, x1, y1, dx, dy) {
+
+	// var blurFilter = new PIXI.filters.BlurFilter();
+
 	this.graphic = drawCircle(0, 0, 1, 0x000000);
+	// this.graphic.filters = [blurFilter];
 	this.sx = x1;
 	this.sy = y1;
 	this.x = x1;
