@@ -39,8 +39,6 @@ http.listen(portNum, function() {
 });
 
 var socketServer = new webSocketServer({server: http});
-// var socketServer = new webSocketServer({port: 3000});
-
 
 function movePlayer(player, d) {
 	player.x += constant.DIR[d].x;
@@ -106,6 +104,10 @@ function processKeyboardEvent(socketServer, socket, data) {
 		x: player.x, 
 		y: player.y
 	}));	
+}
+
+function processPingEvent(socketServer, socket, data) {
+	socket.send(coding.encrypt({command: constant.COMMAND_TYPE.PING, stime: data.stime}));
 }
 
 socketServer.broadcast = function broadcast(data) {
@@ -174,6 +176,11 @@ socketServer.on('connection', function connection(socket) {
 			LOG('INFO: Received MOUSE package');
 			processMouseEvent(socketServer, socket, data);
 			LOG('INFO: Processed Mouse event');
+		}
+		if (data.command == constant.COMMAND_TYPE.PING) {
+			LOG('INFO: Received PING package');
+			processPingEvent(socketServer, socket, data);
+			LOG('INFO: Processed Ping event');			
 		}
  	});
 	// socket.emit('welcome', encrypt(PlayerSettings));

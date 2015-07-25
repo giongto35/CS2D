@@ -17,6 +17,7 @@ var player = {}; //create by new player
 var gameInput = {mouse: {down: false, x: 0, y: 0}, keyboard: {37: false, 38: false, 39: false, 40: false}};
 var players = [];
 var running = true;
+var pingText = {};
 
 window.onload = function() {
 	window.addEventListener('keydown', function (e) {
@@ -48,6 +49,10 @@ function keyDownEvent(e) {
 function keyUpEvent(e) {
 	var key = e.which || e.keyCode;
 	gameInput.keyboard[key] = false;
+	//ping event
+	if (key == 80) {
+		socket.send(coding.encrypt({command: constant.COMMAND_TYPE.PING, stime: getCurrentTime() % 100000}));
+	}
 }
 
 function mouseDownEvent(e) {
@@ -65,6 +70,10 @@ function mouseMoveEvent(e) {
 
 function shootBullet(data) {
 	bulletArr.push(new Bullet(data.stime, data.x1, data.y1, data.dx, data.dy));	
+}
+
+function showPing(data) {
+	pingText.setText(getCurrentTime() % 100000 - data.stime);
 }
 
 function findIndex(arr, id) {
@@ -115,6 +124,7 @@ function setupSocket(socket) {
 
 	socket.onmessage = function (event) {
 		var data = coding.decrypt(event.data);
+		console.log(data);
 		switch (data.command) {
 			case constant.COMMAND_TYPE.INIT:
 				initPlayer(data);
@@ -127,9 +137,17 @@ function setupSocket(socket) {
 				break;
 			case constant.COMMAND_TYPE.SHOOT:
 				shootBullet(data);
+				break;
+			case constant.COMMAND_TYPE.PING:
+				showPing(data);
+				break;
 		}
   	}
 
+}
+
+function setupGUI() {
+	pingText = drawText(0, 0, "");
 }
 
 function setupGraphic() {
@@ -150,14 +168,18 @@ function setupGraphic() {
 	graphicRenderer.view.style.left = '0px';
 	graphicRenderer.backgroundColor = 0xFFFFFF;
     graphicStage = new PIXI.Container();
+    setupGUI();
 	requestAnimationFrame(animate);
 }
 
+function getCurrentTime() {
+	return (new Date()).getTime();
+}
+
 function sendMouseEvent(id, x1, y1, x2, y2) {
-	var date = new Date();
-	if (date.getTime() - player.shotTime > player.reloadInterval) {
+	if (getCurrentTime() - player.shotTime > player.reloadInterval) {
 		socket.send(coding.encrypt({command: constant.COMMAND_TYPE.MOUSE, id: id, x1: x1, y1: y1, x2: x2, y2: y2}));
-		player.shotTime = date;
+		player.shotTime = getCurrentTime();
 	}
 	// socket.send(coding.encrypt({command: constant.COMMAND_TYPE.SHOOT, id: player.id, stime: stime, x1: player.x, y1: player.y, dx: dx, dy: dy}));
 }
@@ -248,11 +270,22 @@ PIXI.AbstractFilter.prototype.syncUniforms = function()
     }
 };
 
+function drawText(x, y, text) {
+	var text = new PIXI.Text(text);
+	graphicStage.addChild(text);
+	text.position.x = x;
+	text.position.y = y;
+
+	return text;
+}
+
 function drawCircle(centerX, centerY, radius, color) {
 	var circle = new PIXI.Graphics();
     circle.lineStyle ( 2, 0x000100,  1);
 	circle.beginFill(color);
 	circle.drawCircle(centerX, centerY, radius);	
+	graphicStage.addChild(circle);
+
 	return circle;
 }
 
@@ -266,7 +299,6 @@ function Player(id, x, y, mainChar, reloadInterval) {
 	this.reloadInterval = reloadInterval !== undefined ? reloadInterval : 100;
 	this.shotTime = -1000000;
 
-	graphicStage.addChild(this.graphic);
 	gameObj.push(this);
 
 	this.updateGraphic = function() {
@@ -325,7 +357,7 @@ function Bullet(stime, x1, y1, dx, dy) {
 
 	this.update = function() {
 		var date = new Date();
-		var cur = date.getTime() % 100000;
+		var cur = getCurrentTime() % 100000;
 		this.x = this.sx + this.dx * (cur - this.stime);
 		this.y = this.sy + this.dy * (cur - this.stime);
 		this.updateGraphic();
