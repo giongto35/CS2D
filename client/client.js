@@ -18,6 +18,12 @@ var gameInput = {mouse: {down: false, x: 0, y: 0}, keyboard: {37: false, 38: fal
 var players = [];
 var running = true;
 var pingText = {};
+var fps = 60;
+var interval = 1000 / fps;
+var now;
+var then = getCurrentTime();
+var pingTime = 0;
+var pingTimeLim = 1000;
 
 window.onload = function() {
 	window.addEventListener('keydown', function (e) {
@@ -49,10 +55,6 @@ function keyDownEvent(e) {
 function keyUpEvent(e) {
 	var key = e.which || e.keyCode;
 	gameInput.keyboard[key] = false;
-	//ping event
-	if (key == 80) {
-		socket.send(coding.encrypt({command: constant.COMMAND_TYPE.PING, stime: getCurrentTime() % 100000}));
-	}
 }
 
 function mouseDownEvent(e) {
@@ -73,7 +75,7 @@ function shootBullet(data) {
 }
 
 function showPing(data) {
-	pingText.setText(getCurrentTime() % 100000 - data.stime);
+	pingText.text = "Ping : " + String(getCurrentTime() % 100000 - data.stime);
 }
 
 function findIndex(arr, id) {
@@ -113,10 +115,6 @@ function removePlayer(data) {
 }
 
 function setupSocket(socket) {
-	// socket.on('pong', function () {
-	// 	var latency = Date.now() - startPingTime;
-	// 	console.log('Latency: ' + latency + 'ms');
-	// })
 
 	socket.onopen = function (event) { 
 
@@ -169,7 +167,6 @@ function setupGraphic() {
 	graphicRenderer.backgroundColor = 0xFFFFFF;
     graphicStage = new PIXI.Container();
     setupGUI();
-	requestAnimationFrame(animate);
 }
 
 function getCurrentTime() {
@@ -186,6 +183,10 @@ function sendMouseEvent(id, x1, y1, x2, y2) {
 
 function sendKeyboardEvent(id, m) {
 	socket.send(coding.encrypt({command: constant.COMMAND_TYPE.KEYBOARD, id: id, key: m}));
+}
+
+function sendPingEvent() {
+	socket.send(coding.encrypt({command: constant.COMMAND_TYPE.PING, stime: getCurrentTime() % 100000}));
 }
 
 function updateGameState() {
@@ -215,16 +216,26 @@ function updateGameState() {
 function gameLoop() {
 	if (running) {
     	updateGameState();
+    	if (getCurrentTime() - pingTime > pingTimeLim) {
+    		sendPingEvent();
+    		pingTime = getCurrentTime();
+    	}
 	}
     else {
 
     }
 }
 
-function animate() {
+function animate() {	
     requestAnimationFrame(animate);
-    gameLoop();
-    graphicRenderer.render(graphicStage);
+	now = getCurrentTime();
+	var delta = now - then;	
+	//setup framerate
+	if (delta > interval) {
+	    gameLoop();
+	    graphicRenderer.render(graphicStage);
+	    then = now - (delta % interval);
+	}
 }
 /**
  * @author Mat Groves http://matgroves.com/ @Doormat23
@@ -378,6 +389,6 @@ function Bullet(stime, x1, y1, dx, dy) {
 
 setupSocket(socket);
 setupGraphic();
-
+requestAnimFrame(animate);
 //Graphic
 // animate();
