@@ -175,7 +175,7 @@ function getCurrentTime() {
 
 function sendMouseEvent(id, x1, y1, x2, y2) {
 	if (getCurrentTime() - player.shotTime > player.reloadInterval) {
-		socket.send(coding.encrypt({command: constant.COMMAND_TYPE.MOUSE, id: id, x1: x1, y1: y1, x2: x2, y2: y2}));
+		socket.send(coding.encrypt({command: constant.COMMAND_TYPE.MOUSE, id: id, x1: x1, y1: y1, x2: x2, y2: y2, stime: getCurrentTime() % 100000}));
 		player.shotTime = getCurrentTime();
 	}
 	// socket.send(coding.encrypt({command: constant.COMMAND_TYPE.SHOOT, id: player.id, stime: stime, x1: player.x, y1: player.y, dx: dx, dy: dy}));

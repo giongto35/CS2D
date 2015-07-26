@@ -52,7 +52,7 @@
 		{id: 'Int32', x: 'Int32', y: 'Int32', main: 'Int32'}, //INIT
 		{id: 'Int32'}, //DESTROY
 		{id: 'Int32', key: 'Uint8'},  //KEYBOARD
-		{id: 'Int32', x1: 'Float32', y1: 'Float32', x2: 'Float32', y2: 'Float32'}, //MOUSE
+		{id: 'Int32', x1: 'Float32', y1: 'Float32', x2: 'Float32', y2: 'Float32', stime: 'Int32'}, //MOUSE
 		{id: 'Int32', x: 'Float32', y: 'Float32'}, //UPDATE
 		{id: 'Int32', stime: 'Int32', x1: 'Float32', y1: 'Float32', dx: 'Float32', dy: 'Float32'}, //SHOOT
 		{stime: 'Int32'} //PING
