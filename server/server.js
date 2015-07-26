@@ -66,10 +66,12 @@ function processMouseEvent(socketServer, socket, data) {
 	var deg = Math.atan2(data.x2 - data.x1, data.y2 - data.y1);
 	var dx = constant.BULLET_CONFIG.SPEED * Math.sin(deg);
 	var dy = constant.BULLET_CONFIG.SPEED * Math.cos(deg);
-	var date = new Date();
-	var stime = date.getTime() % 100000;
+	var stime = Date.now() % 100000;
 	var lagTime = stime - data.stime;
+	console.log(data.stime);
+	console.log(stime);
 	stime = (stime + lagTime) % 100000; //lag compensate
+	console.log(stime);
 	bullets.push(new gameObject.Bullet(data.id, stime, data.x1, data.y1, dx, dy));
 
 	LOG('INFO: Broadcast SHOOT package');

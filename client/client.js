@@ -18,10 +18,10 @@ var gameInput = {mouse: {down: false, x: 0, y: 0}, keyboard: {37: false, 38: fal
 var players = [];
 var running = true;
 var pingText = {};
-var fps = 60;
+var fps = 30;
 var interval = 1000 / fps;
 var now;
-var then = getCurrentTime();
+var then = Date.now();
 var pingTime = 0;
 var pingTimeLim = 1000;
 
@@ -75,7 +75,7 @@ function shootBullet(data) {
 }
 
 function showPing(data) {
-	pingText.text = "Ping : " + String(getCurrentTime() % 100000 - data.stime);
+	pingText.text = "Ping : " + String(Date.now() % 100000 - data.stime);
 }
 
 function findIndex(arr, id) {
@@ -154,7 +154,7 @@ function setupGraphic() {
 	          window.webkitRequestAnimationFrame ||
 	          window.mozRequestAnimationFrame    ||
 	          function( callback ){
-	            window.setTimeout(callback, 1000 / 60);
+	            window.setTimeout(callback, interval);
 	          };
 	})();
 
@@ -169,14 +169,10 @@ function setupGraphic() {
     setupGUI();
 }
 
-function getCurrentTime() {
-	return (new Date()).getTime();
-}
-
 function sendMouseEvent(id, x1, y1, x2, y2) {
-	if (getCurrentTime() - player.shotTime > player.reloadInterval) {
-		socket.send(coding.encrypt({command: constant.COMMAND_TYPE.MOUSE, id: id, x1: x1, y1: y1, x2: x2, y2: y2, stime: getCurrentTime() % 100000}));
-		player.shotTime = getCurrentTime();
+	if (Date.now() - player.shotTime > player.reloadInterval) {
+		socket.send(coding.encrypt({command: constant.COMMAND_TYPE.MOUSE, id: id, x1: x1, y1: y1, x2: x2, y2: y2, stime: Date.now() % 100000}));
+		player.shotTime = Date.now();
 	}
 	// socket.send(coding.encrypt({command: constant.COMMAND_TYPE.SHOOT, id: player.id, stime: stime, x1: player.x, y1: player.y, dx: dx, dy: dy}));
 }
@@ -186,7 +182,7 @@ function sendKeyboardEvent(id, m) {
 }
 
 function sendPingEvent() {
-	socket.send(coding.encrypt({command: constant.COMMAND_TYPE.PING, stime: getCurrentTime() % 100000}));
+	socket.send(coding.encrypt({command: constant.COMMAND_TYPE.PING, stime: Date.now() % 100000}));
 }
 
 function updateGameState() {
@@ -216,9 +212,9 @@ function updateGameState() {
 function gameLoop() {
 	if (running) {
     	updateGameState();
-    	if (getCurrentTime() - pingTime > pingTimeLim) {
+    	if (Date.now() - pingTime > pingTimeLim) {
     		sendPingEvent();
-    		pingTime = getCurrentTime();
+    		pingTime = Date.now();
     	}
 	}
     else {
@@ -228,7 +224,7 @@ function gameLoop() {
 
 function animate() {	
     requestAnimationFrame(animate);
-	now = getCurrentTime();
+	now = Date.now();
 	var delta = now - then;	
 	//setup framerate
 	if (delta > interval) {
@@ -368,7 +364,7 @@ function Bullet(stime, x1, y1, dx, dy) {
 
 	this.update = function() {
 		var date = new Date();
-		var cur = getCurrentTime() % 100000;
+		var cur = Date.now() % 100000;
 		this.x = this.sx + this.dx * (cur - this.stime);
 		this.y = this.sy + this.dy * (cur - this.stime);
 		this.updateGraphic();
