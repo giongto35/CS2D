@@ -296,32 +296,29 @@ function drawCircle(centerX, centerY, radius, color) {
 	return circle;
 }
 
-function Player(id, x, y, mainChar, reloadInterval) {
+class GraphicObject {
+	constructor (id, x, y) {
+		this.id = id !== undefined ? id : -1;
+		this.x = x !== undefined ? x : 0;
+		this.y = y !== undefined ? y : 0;		
 
-	var color = mainChar === true ? constant.PLAYER_CONFIG.DEFAULT_COLOR : constant.ENEMY_CONFIG.DEFAULT_COLOR;
-	this.graphic = drawCircle(0, 0, constant.PLAYER_CONFIG.DEFAULT_SIZE, color);
-	this.id = id !== undefined ? id : -1;
-	this.x = x !== undefined ? x : 0;
-	this.y = y !== undefined ? y : 0;
-	this.reloadInterval = reloadInterval !== undefined ? reloadInterval : 100;
-	this.shotTime = -1000000;
+		gameObj.push(this);
+	}
 
-	gameObj.push(this);
-
-	this.updateGraphic = function() {
+	updateGraphic() {
 		this.graphic.x = this.x;
 		this.graphic.y = this.y;
-	};
+	}
 
-	this.invalid = function() {
+	invalid() {
 
-	};
+	}
 
-	this.update = function() {
+	update() {
 		this.updateGraphic();
-	};
+	}
 
-	this.destroy = function() {
+	destroy() {
 		for (var iObj in gameObj) {
 			if (gameObj[iObj] === this) {
 				gameObj.splice(iObj, 1);
@@ -330,57 +327,43 @@ function Player(id, x, y, mainChar, reloadInterval) {
 		}
 		this.graphic.clear();
 		delete this.graphic;
-		graphicStage.removeChild(this.graphic);
-	};
+		graphicStage.removeChild(this.graphic);		
+	}
 }
 
-function Bullet(stime, x1, y1, dx, dy) {
+class Player extends GraphicObject {
+	constructor (id, x, y, mainChar, reloadInterval) {
+		super(id, x, y);
+		var color = mainChar === true ? constant.PLAYER_CONFIG.DEFAULT_COLOR : constant.ENEMY_CONFIG.DEFAULT_COLOR;
+		this.graphic = drawCircle(0, 0, constant.PLAYER_CONFIG.DEFAULT_SIZE, color);
+		this.reloadInterval = reloadInterval !== undefined ? reloadInterval : 100;
+		this.shotTime = -1000000;
+	}
+}
 
-	// var blurFilter = new PIXI.filters.BlurFilter();
+class Bullet extends GraphicObject {
+	constructor (stime, x1, y1, dx, dy) {
+		super(-1, x1, y1);
+		this.graphic = drawCircle(0, 0, 1, 0x000000);
+		this.sx = x1;
+		this.sy = y1;
+		this.dx = dx;
+		this.dy = dy;
+		this.stime = stime;
+	}
 
-	this.graphic = drawCircle(0, 0, 1, 0x000000);
-	// this.graphic.filters = [blurFilter];
-	this.sx = x1;
-	this.sy = y1;
-	this.x = x1;
-	this.y = y1;
-	this.dx = dx;
-	this.dy = dy;
-	this.stime = stime;
-
-    // graphicObj.push(this);
-	graphicStage.addChild(this.graphic);
-	gameObj.push(this);
-
-    this.updateGraphic = function() {
-    	this.graphic.x = this.x;
-    	this.graphic.y = this.y;
-    };
-
-	this.invalid = function() {
+	invalid() {
 		this.update();
 		return (this.x < 0 || this.x > constant.GAME_WIDTH || this.y < 0 || this.y > constant.GAME_HEIGHT);
-	};
+	}
 
-	this.update = function() {
+	update() {
 		var date = new Date();
 		var cur = Date.now() % 100000;
 		this.x = this.sx + this.dx * (cur - this.stime);
 		this.y = this.sy + this.dy * (cur - this.stime);
 		this.updateGraphic();
-	};
-
-	this.destroy = function() {
-		for (var iObj in gameObj) {
-			if (gameObj[iObj] === this) {
-				gameObj.splice(iObj, 1);
-				break;
-			}
-		}
-		this.graphic.clear();
-		delete this.graphic;
-		graphicStage.removeChild(this.graphic);
-	};
+	}
 }
 
 setupSocket(socket);
