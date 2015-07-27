@@ -89,10 +89,9 @@ function findIndex(arr, id) {
     return -1;
 }
 
-function updatePosition(data) {
-	var player = players[findIndex(players, data.id)]; 
+function updatePosition(player, data) {
 	//update player, check snapshot
-	if (data.id === player.id) {
+	if (data.id == player.id) {
 		var pos = playerSnapshot.shift();
 		if (!(pos.x == data.x && pos.y == data.y)) {
 			player.x = data.x;
@@ -100,6 +99,7 @@ function updatePosition(data) {
 		}
 	} else {
 		//update other players
+		var player = players[findIndex(players, data.id)]; 
 		player.x = data.x;
 		player.y = data.y;
 	}
@@ -111,6 +111,14 @@ function initPlayer(data) {
 		player = tempPlayer;
 	} 
 	players.push(tempPlayer);					
+}
+
+function dist(x1, y1, x2, y2) {
+	return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+}
+
+function checkCollision(obj1, obj2, lim) {
+	return (dist(obj1.x, obj1.y, obj2.x, obj2.y) < lim);
 }
 
 function movePlayer(player, d) {
@@ -152,7 +160,7 @@ function setupSocket(socket) {
 				initPlayer(data);
 				break;
 			case constant.COMMAND_TYPE.UPDATE:
-				updatePosition(data);
+				updatePosition(player, data);
 				break;
 			case constant.COMMAND_TYPE.DESTROY:
 				removePlayer(data);
