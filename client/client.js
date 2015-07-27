@@ -177,7 +177,7 @@ function setupSocket(socket) {
 }
 
 function setupGUI() {
-	pingText = drawText(0, 0, "");
+	pingText = drawText(0, 0, "", constant.TEXT_DEPTH);
 }
 
 function setupGraphic() {
@@ -273,6 +273,7 @@ function animate() {
 	//setup framerate
 	if (delta > interval) {
 	    gameLoop();
+	   	graphicStage.children.sort(depthCompare);
 	    graphicRenderer.render(graphicStage);
 	    then = now - (delta % interval);
 	}
@@ -321,20 +322,21 @@ PIXI.AbstractFilter.prototype.syncUniforms = function()
     }
 };
 
-function drawText(x, y, text) {
+function drawText(x, y, text, depth) {
 	var text = new PIXI.Text(text);
 	graphicStage.addChild(text);
 	text.position.x = x;
 	text.position.y = y;
-
+	text.z = depth;
 	return text;
 }
 
-function drawCircle(centerX, centerY, radius, color) {
+function drawCircle(centerX, centerY, radius, color, depth) {
 	var circle = new PIXI.Graphics();
-    circle.lineStyle ( 2, 0x000100,  1);
+    circle.lineStyle(2, 0x000100, 1);
 	circle.beginFill(color);
-	circle.drawCircle(centerX, centerY, radius);	
+	circle.drawCircle(centerX, centerY, radius);
+	circle.z = depth;
 	graphicStage.addChild(circle);
 
 	return circle;
@@ -379,7 +381,7 @@ class Player extends GraphicObject {
 	constructor (id, x, y, mainChar, reloadInterval) {
 		super(id, x, y);
 		var color = mainChar === true ? constant.PLAYER_CONFIG.DEFAULT_COLOR : constant.ENEMY_CONFIG.DEFAULT_COLOR;
-		this.graphic = drawCircle(0, 0, constant.PLAYER_CONFIG.DEFAULT_SIZE, color);
+		this.graphic = drawCircle(0, 0, constant.PLAYER_CONFIG.DEFAULT_SIZE, color, constant.PLAYER_DEPTH);
 		this.reloadInterval = reloadInterval !== undefined ? reloadInterval : 100;
 		this.shotTime = -1000000;
 	}
@@ -388,7 +390,7 @@ class Player extends GraphicObject {
 class Bullet extends GraphicObject {
 	constructor (stime, x1, y1, dx, dy) {
 		super(-1, x1, y1);
-		this.graphic = drawCircle(0, 0, 1, 0x000000);
+		this.graphic = drawCircle(0, 0, 1, 0x000000, constant.BULLET_DEPTH);
 		this.sx = x1;
 		this.sy = y1;
 		this.dx = dx;
@@ -402,12 +404,21 @@ class Bullet extends GraphicObject {
 	}
 
 	update() {
-		var date = new Date();
 		var cur = Date.now() % 100000;
-		this.x = this.sx + this.dx * (cur - this.stime);
-		this.y = this.sy + this.dy * (cur - this.stime);
+		if (cur > this.stime) {
+			this.x = this.sx + this.dx * (cur - this.stime);
+			this.y = this.sy + this.dy * (cur - this.stime);
+		}
 		this.updateGraphic();
 	}
+}
+
+function depthCompare(a,b) {
+	if (a.z < b.z)
+   		return -1;
+  	if (a.z > b.z)
+    	return 1;
+  	return 0;
 }
 
 setupSocket(socket);

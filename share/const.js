@@ -46,6 +46,11 @@
 	// Misc config
 	exports.DIR = [{x: -1, y: 0}, {x: 0, y: -1}, {x: 1, y: 0}, {x: 0, y: 1}];
 
+	//Depth
+	exports.BULLET_DEPTH = 2;
+	exports.PLAYER_DEPTH = 3;
+	exports.TEXT_DEPTH = 4;
+
 	//make register function for command
 	//enum
 	//make register function for command
