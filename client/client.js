@@ -24,6 +24,7 @@ var now;
 var then = Date.now();
 var pingTime = 0;
 var pingTimeLim = 1000;
+var playerSnapshot = [];
 
 window.onload = function() {
 	window.addEventListener('keydown', function (e) {
@@ -90,8 +91,18 @@ function findIndex(arr, id) {
 
 function updatePosition(data) {
 	var player = players[findIndex(players, data.id)]; 
-	player.x = data.x;
-	player.y = data.y;
+	//update player, check snapshot
+	if (data.id === player.id) {
+		var pos = playerSnapshot.shift();
+		if (!(pos.x == data.x && pos.y == data.y)) {
+			player.x = data.x;
+			player.y = data.y;
+		}
+	} else {
+		//update other players
+		player.x = data.x;
+		player.y = data.y;
+	}
 }
 
 function initPlayer(data) {
@@ -100,6 +111,19 @@ function initPlayer(data) {
 		player = tempPlayer;
 	} 
 	players.push(tempPlayer);					
+}
+
+function movePlayer(player, d) {
+	player.x += constant.DIR[d].x;
+	player.y += constant.DIR[d].y;
+	for (var iPlayer in players) {
+		if (players[iPlayer] !== player && checkCollision(player, players[iPlayer], 2 * constant.PLAYER_CONFIG.DEFAULT_SIZE)) {
+			player.x -= constant.DIR[d].x;
+			player.y -= constant.DIR[d].y;
+			return;
+		}
+	}
+	playerSnapshot.push({x: player.x, y: player.y});
 }
 
 function removePlayer(data) {
@@ -169,7 +193,7 @@ function setupGraphic() {
     setupGUI();
 }
 
-function sendMouseEvent(id, x1, y1, x2, y2) {
+function processMouseEvent(id, x1, y1, x2, y2) {
 	if (Date.now() - player.shotTime > player.reloadInterval) {
 		socket.send(coding.encrypt({command: constant.COMMAND_TYPE.MOUSE, id: id, x1: x1, y1: y1, x2: x2, y2: y2, stime: Date.now() % 100000}));
 		player.shotTime = Date.now();
@@ -177,7 +201,19 @@ function sendMouseEvent(id, x1, y1, x2, y2) {
 	// socket.send(coding.encrypt({command: constant.COMMAND_TYPE.SHOOT, id: player.id, stime: stime, x1: player.x, y1: player.y, dx: dx, dy: dy}));
 }
 
-function sendKeyboardEvent(id, m) {
+function processKeyboardEvent(id, m) {
+	if (m == constant.KEY_LEFT || m == constant.KEY_A) {
+		movePlayer(player, 0);
+	}		
+	if (m == constant.KEY_UP || m == constant.KEY_W) {
+		movePlayer(player, 1);
+	}
+	if (m == constant.KEY_RIGHT || m == constant.KEY_D) {
+		movePlayer(player, 2);
+	}
+	if (m == constant.KEY_DOWN || m == constant.KEY_S) {
+		movePlayer(player, 3);
+	}
 	socket.send(coding.encrypt({command: constant.COMMAND_TYPE.KEYBOARD, id: id, key: m}));
 }
 
@@ -189,11 +225,11 @@ function updateGameState() {
 	//update by game input
 	for (var m in gameInput.keyboard) {
 		if (gameInput.keyboard[m]) {
-			sendKeyboardEvent(player.id, m);
+			processKeyboardEvent(player.id, m);
 		}
 	}
 	if (gameInput.mouse.down) {
-		sendMouseEvent(player.id, player.x, player.y, gameInput.mouse.x, gameInput.mouse.y);
+		processMouseEvent(player.id, player.x, player.y, gameInput.mouse.x, gameInput.mouse.y);
 	}
 
 	//update Object

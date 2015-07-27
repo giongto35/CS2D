@@ -43,6 +43,9 @@
 	exports.KEY_D = 68;
 	exports.KEY_P = 80;
 
+	// Misc config
+	exports.DIR = [{x: -1, y: 0}, {x: 0, y: -1}, {x: 1, y: 0}, {x: 0, y: 1}];
+
 	//make register function for command
 	//enum
 	//make register function for command
@@ -65,5 +68,4 @@
 //Server only
 if (typeof exports !== 'undefined' )
 {
-	exports.DIR = [{x: -1, y: 0}, {x: 0, y: -1}, {x: 1, y: 0}, {x: 0, y: 1}];
 };
