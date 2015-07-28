@@ -1,3 +1,5 @@
+//GameObject for server
+
 var constant = require('../share/const.js');
 
 var Player = function (id, x, y, socket) {
@@ -30,10 +32,19 @@ var Bullet = function (id, stime, x1, y1, dx, dy) {
 	}
 }
 
+var Block = function(x, y) {
+	this.x = x;
+	this.y = y;
+}
+
 exports.Player = function (id, x, y, socket) {
 	return new Player(id, x, y, socket);
 }
 
 exports.Bullet = function (id, stime, x1, y1, dx, dy) {
 	return new Bullet(id, stime, x1, y1, dx, dy);
+}
+
+exports.Block = function (x, y) {
+	return new Block(x, y);
 }

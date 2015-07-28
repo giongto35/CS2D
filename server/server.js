@@ -18,6 +18,8 @@ var curr_id = 0;
 var players = [];
 var bullets = [];
 var sockets = [];
+var tiles = [];
+var blocks = [];
 
 function LOG(message) {
 	console.log(message);
@@ -40,11 +42,32 @@ http.listen(portNum, function() {
 
 var socketServer = new webSocketServer({server: http});
 
+//setup tiles
+setupGameObject();
+
+function setupGameObject() {
+	var tiles = new Array(Math.trunc(constant.GAME_HEIGHT / constant.BLOCK_SIZE) + 1);
+	for(var i = 0; i < tiles.length; i++) {
+    	tiles[i] = new Array(Math.trunc(constant.GAME_HEIGHT / constant.BLOCK_SIZE) + 1);
+	}
+}
+
 function movePlayer(player, d) {
 	player.x += constant.DIR[d].x;
 	player.y += constant.DIR[d].y;
 	for (var iPlayer in players) {
 		if (players[iPlayer] !== player && checkCollision(player, players[iPlayer], 2 * constant.PLAYER_CONFIG.DEFAULT_SIZE)) {
+			player.x -= constant.DIR[d].x;
+			player.y -= constant.DIR[d].y;
+			return;
+		}
+	}
+
+	for (var iBlock in blocks) {
+		var block = blocks[iBlock];
+		if (checkCirRectCollision(
+			{x: player.x, y: player.y, radius: constant.PLAYER_CONFIG.DEFAULT_SIZE}, 
+			{x1: block.x, y1: block.y, x2: block.x + constant.BLOCK_SIZE, y2: block.y + constant.BLOCK_SIZE})) {
 			player.x -= constant.DIR[d].x;
 			player.y -= constant.DIR[d].y;
 			return;
@@ -68,10 +91,7 @@ function processMouseEvent(socketServer, socket, data) {
 	var dy = constant.BULLET_CONFIG.SPEED * Math.cos(deg);
 	var stime = Date.now() % 100000;
 	var lagTime = stime - data.stime;
-	console.log(data.stime);
-	console.log(stime);
 	stime = (stime + lagTime) % 100000; //lag compensate
-	console.log(stime);
 	bullets.push(new gameObject.Bullet(data.id, stime, data.x1, data.y1, dx, dy));
 
 	LOG('INFO: Broadcast SHOOT package');
@@ -90,6 +110,7 @@ function processMouseEvent(socketServer, socket, data) {
 
 function processKeyboardEvent(socketServer, socket, data) {
 	var player = players[findIndex(players, data.id)];
+	var moving = false;
 	if (data.key == constant.KEY_LEFT || data.key == constant.KEY_A) {
 		movePlayer(player, 0);
 	}		
@@ -114,6 +135,29 @@ function processPingEvent(socketServer, socket, data) {
 	socket.send(coding.encrypt({command: constant.COMMAND_TYPE.PING, stime: data.stime}));
 }
 
+function processBuildEvent(socketServer, socket, data) {
+	blocks.push(new gameObject.Block(data.x * constant.BLOCK_SIZE, data.y * constant.BLOCK_SIZE));
+	socketServer.broadcast(coding.encrypt({command: constant.COMMAND_TYPE.MOUSEBUILD, x: data.x, y: data.y}));
+}
+
+function sendCurrentState(socket) {
+	for (var iPlayer in players) {
+		var player = players[iPlayer];
+		socket.send(coding.encrypt({
+			command: constant.COMMAND_TYPE.INIT,
+			id: player.id,
+			x: player.x,
+			y: player.y,
+			main: 0
+		}));
+	}
+
+	for (var iBlock in blocks) {
+		var block = blocks[iBlock];
+		socket.send(coding.encrypt({command: constant.COMMAND_TYPE.MOUSEBUILD, x: block.x / constant.BLOCK_SIZE, y: block.y / constant.BLOCK_SIZE}));
+	}
+}
+
 socketServer.broadcast = function broadcast(data) {
 	socketServer.clients.forEach(function each(client) {
 		client.send(data);
@@ -133,19 +177,9 @@ socketServer.on('connection', function connection(socket) {
 
 	//send current players
 	LOG('INFO: A player connected');
-	for (var idx in players) {
-		// LOG(players[idx]);
-		var player = players[idx];
-		socket.send(coding.encrypt({
-			command: constant.COMMAND_TYPE.INIT,
-			id: player.id,
-			x: player.x,
-			y: player.y,
-			main: 0
-		}));
-	}
-	LOG('INFO: Sent INIT package for existing sockets');
+	sendCurrentState(socket);
 
+	LOG('INFO: Sent INIT package for existing sockets');
 	var player = new gameObject.Player(curr_id++, 10, 10, socket);
 	players.push(player);
 	
@@ -174,17 +208,22 @@ socketServer.on('connection', function connection(socket) {
 		if (data.command == constant.COMMAND_TYPE.KEYBOARD) {
 			LOG('INFO: Received KEYBOARD package');
 			processKeyboardEvent(socketServer, socket, data);
-			LOG('INFO: Processed Keyboard event');
+			LOG('INFO: Processed KEYBOARD event');
 		}
 		if (data.command == constant.COMMAND_TYPE.MOUSE) {
 			LOG('INFO: Received MOUSE package');
 			processMouseEvent(socketServer, socket, data);
-			LOG('INFO: Processed Mouse event');
+			LOG('INFO: Processed MOUSE event');
 		}
 		if (data.command == constant.COMMAND_TYPE.PING) {
 			LOG('INFO: Received PING package');
 			processPingEvent(socketServer, socket, data);
-			LOG('INFO: Processed Ping event');			
+			LOG('INFO: Processed PING event');			
+		}
+		if (data.command == constant.COMMAND_TYPE.MOUSEBUILD) {
+			LOG('INFO: Received MOUSEBUILD package');
+			processBuildEvent(socketServer, socket, data);
+			LOG('INFO: Processed MOUSEBUILD event');			
 		}
  	});
 	// socket.emit('welcome', encrypt(PlayerSettings));
@@ -209,6 +248,18 @@ socketServer.on('connection', function connection(socket) {
 
 function dist(x1, y1, x2, y2) {
 	return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+}
+
+function checkCirRectCollision(cir, rect) {
+	if (rect.x1 <= cir.x && cir.x <= rect.x2 && rect.y1 <= cir.y && cir.y <= rect.y2) {
+		return true;
+	}
+	var xnear = Math.max(Math.min(cir.x, rect.x2), rect.x1);
+	var ynear = Math.max(Math.min(cir.y, rect.y2), rect.y1);
+	if (dist(cir.x, cir.y, xnear, ynear) <= cir.radius) {
+		return true;
+	}
+	return false;
 }
 
 function checkCollision(obj1, obj2, lim) {
@@ -242,6 +293,17 @@ function gameLoop() {
 		var bullet = bullets[i];
 		if (bullet.invalid()) {
 			bullets.splice(i, 1);
+			continue;
+		}
+		for (var iBlock in blocks) {
+			var block = blocks[iBlock];
+			if (checkCirRectCollision(
+				{x: bullet.x, y: bullet.y, radius: 1}, 
+				{x1: block.x, y1: block.y, x2: block.x + constant.BLOCK_SIZE, y2: block.y + constant.BLOCK_SIZE})) {
+				console.log("HIT BLOCK");
+				bullets.splice(i, 1);
+				continue;
+			}
 		}
 	}
 }

@@ -1,6 +1,7 @@
 /*jslint node: true */
 'use strict';
 
+//for Server
 var isServer = false;
 
 if (typeof exports !== 'undefined') {

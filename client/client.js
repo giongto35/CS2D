@@ -11,20 +11,22 @@ var host = location.origin.replace(/^http/, 'ws');
 var socket = new WebSocket(host);
 socket.binaryType = 'arraybuffer';
 
-var bulletArr = [];
+var bullets = [];
+var blocks = [];
 var gameObj = [];
 var player = {}; //create by new player
 var gameInput = {mouse: {down: false, x: 0, y: 0}, keyboard: {37: false, 38: false, 39: false, 40: false}};
 var players = [];
 var running = true;
 var pingText = {};
-var fps = 30;
+var fps = 60;
 var interval = 1000 / fps;
 var now;
 var then = Date.now();
 var pingTime = 0;
 var pingTimeLim = 1000;
 var playerSnapshot = [];
+var tiles = [[]];
 
 window.onload = function() {
 	window.addEventListener('keydown', function (e) {
@@ -72,11 +74,11 @@ function mouseMoveEvent(e) {
 }
 
 function shootBullet(data) {
-	bulletArr.push(new Bullet(data.stime, data.x1, data.y1, data.dx, data.dy));	
+	bullets.push(new Bullet(data.stime, data.x1, data.y1, data.dx, data.dy));	
 }
 
 function showPing(data) {
-	pingText.text = "Ping : " + String(Date.now() % 100000 - data.stime);
+	pingText.text = 'Ping : ' + String(Date.now() % 100000 - data.stime);
 }
 
 function findIndex(arr, id) {
@@ -93,7 +95,7 @@ function updatePosition(player, data) {
 	//update player, check snapshot
 	if (data.id == player.id) {
 		var pos = playerSnapshot.shift();
-		if (!(pos.x == data.x && pos.y == data.y)) {
+		if (pos !== undefined && !(pos.x == data.x && pos.y == data.y)) {
 			player.x = data.x;
 			player.y = data.y;
 		}
@@ -115,6 +117,18 @@ function initPlayer(data) {
 
 function dist(x1, y1, x2, y2) {
 	return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+}
+
+function checkCirRectCollision(cir, rect) {
+	if (rect.x1 <= cir.x && cir.x <= rect.x2 && rect.y1 <= cir.y && cir.y <= rect.y2) {
+		return true;
+	}
+	var xnear = Math.max(Math.min(cir.x, rect.x2), rect.x1);
+	var ynear = Math.max(Math.min(cir.y, rect.y2), rect.y1);
+	if (dist(cir.x, cir.y, xnear, ynear) <= cir.radius) {
+		return true;
+	}
+	return false;
 }
 
 function checkCollision(obj1, obj2, lim) {
@@ -146,6 +160,14 @@ function removePlayer(data) {
 	players.splice(idx, 1);
 }
 
+//after receiving BUILD message
+function buildBlock(data) {
+	if (tiles[data.y][data.x] !== true) {
+		blocks.push(new Block(data.x * constant.BLOCK_SIZE, data.y * constant.BLOCK_SIZE));
+		tiles[data.y][data.x] = true;
+	}
+}
+
 function setupSocket(socket) {
 
 	socket.onopen = function (event) { 
@@ -171,6 +193,9 @@ function setupSocket(socket) {
 			case constant.COMMAND_TYPE.PING:
 				showPing(data);
 				break;
+			case constant.COMMAND_TYPE.MOUSEBUILD:
+				buildBlock(data);
+				break;
 		}
   	}
 
@@ -178,6 +203,13 @@ function setupSocket(socket) {
 
 function setupGUI() {
 	pingText = drawText(0, 0, "", constant.TEXT_DEPTH);
+}
+
+function setupGameObject() {
+	tiles = new Array(Math.trunc(constant.GAME_HEIGHT / constant.BLOCK_SIZE) + 1);
+	for(var i = 0; i < tiles.length; i++) {
+    	tiles[i] = new Array(Math.trunc(constant.GAME_WIDTH / constant.BLOCK_SIZE) + 1);
+	}
 }
 
 function setupGraphic() {
@@ -206,7 +238,22 @@ function processMouseEvent(id, x1, y1, x2, y2) {
 		socket.send(coding.encrypt({command: constant.COMMAND_TYPE.MOUSE, id: id, x1: x1, y1: y1, x2: x2, y2: y2, stime: Date.now() % 100000}));
 		player.shotTime = Date.now();
 	}
-	// socket.send(coding.encrypt({command: constant.COMMAND_TYPE.SHOOT, id: player.id, stime: stime, x1: player.x, y1: player.y, dx: dx, dy: dy}));
+}
+
+function processMouseBuildEvent(x, y) {
+	var yblock = Math.trunc(y / constant.BLOCK_SIZE);
+	var xblock = Math.trunc(x / constant.BLOCK_SIZE);
+	if (tiles[yblock][xblock] !== true) {
+		blocks.push(new Block(xblock * constant.BLOCK_SIZE, yblock * constant.BLOCK_SIZE));
+		tiles[yblock][xblock] = true;
+		//Can someone exploit here because of precalculation in client?
+		socket.send(coding.encrypt({command: constant.COMMAND_TYPE.MOUSEBUILD, x: xblock, y: yblock}));
+	}
+}
+
+function validKey(key) {
+	//TODO
+	return true;
 }
 
 function processKeyboardEvent(id, m) {
@@ -222,7 +269,9 @@ function processKeyboardEvent(id, m) {
 	if (m == constant.KEY_DOWN || m == constant.KEY_S) {
 		movePlayer(player, 3);
 	}
-	socket.send(coding.encrypt({command: constant.COMMAND_TYPE.KEYBOARD, id: id, key: m}));
+	if (validKey(m)) {
+		socket.send(coding.encrypt({command: constant.COMMAND_TYPE.KEYBOARD, id: id, key: m}));
+	}
 }
 
 function sendPingEvent() {
@@ -237,7 +286,11 @@ function updateGameState() {
 		}
 	}
 	if (gameInput.mouse.down) {
-		processMouseEvent(player.id, player.x, player.y, gameInput.mouse.x, gameInput.mouse.y);
+		if (gameInput.keyboard[constant.KEY_SHIFT]) {
+			processMouseBuildEvent(gameInput.mouse.x, gameInput.mouse.y);
+		} else {
+			processMouseEvent(player.id, player.x, player.y, gameInput.mouse.x, gameInput.mouse.y);			
+		}
 	}
 
 	//update Object
@@ -266,6 +319,8 @@ function gameLoop() {
     }
 }
 
+
+
 function animate() {	
     requestAnimationFrame(animate);
 	now = Date.now();
@@ -273,7 +328,13 @@ function animate() {
 	//setup framerate
 	if (delta > interval) {
 	    gameLoop();
-	   	graphicStage.children.sort(depthCompare);
+	   	graphicStage.children.sort(function depthCompare(a,b) {
+			if (a.z < b.z)
+   				return -1;
+  			if (a.z > b.z)
+    			return 1;
+		  	return 0;
+		});
 	    graphicRenderer.render(graphicStage);
 	    then = now - (delta % interval);
 	}
@@ -342,6 +403,19 @@ function drawCircle(centerX, centerY, radius, color, depth) {
 	return circle;
 }
 
+function drawRectangle(x1, y1, x2, y2, color, depth) {
+	var rect = new PIXI.Graphics();
+	rect.lineStyle(2, 0x000100, 1);
+	rect.beginFill(color);
+	rect.drawRect(x1, y1, x2, y2);
+	rect.z = depth;
+	console.log(graphicStage);
+	console.log("HIHIEE");
+	graphicStage.addChild(rect);
+
+	return rect;
+}
+
 class GraphicObject {
 	constructor (id, x, y) {
 		this.id = id !== undefined ? id : -1;
@@ -400,6 +474,16 @@ class Bullet extends GraphicObject {
 
 	invalid() {
 		this.update();
+
+		for (var iBlock in blocks) {
+			var block = blocks[iBlock];
+			if (checkCirRectCollision(
+				{x: this.x, y: this.y, radius: 1}, 
+				{x1: block.x, y1: block.y, x2: block.x + constant.BLOCK_SIZE, y2: block.y + constant.BLOCK_SIZE})) {
+				return true;
+			}
+		}
+
 		return (this.x < 0 || this.x > constant.GAME_WIDTH || this.y < 0 || this.y > constant.GAME_HEIGHT);
 	}
 
@@ -413,16 +497,18 @@ class Bullet extends GraphicObject {
 	}
 }
 
-function depthCompare(a,b) {
-	if (a.z < b.z)
-   		return -1;
-  	if (a.z > b.z)
-    	return 1;
-  	return 0;
+class Block extends GraphicObject {
+	constructor (x, y) {
+		super(-1, x, y);
+		this.x = x; //Math.trunc(x / constant.BLOCK_SIZE) * constant.BLOCK_SIZE;
+		this.y = y; //Math.trunc(y / constant.BLOCK_SIZE) * constant.BLOCK_SIZE;
+		this.graphic = drawRectangle(0, 0, constant.BLOCK_SIZE, constant.BLOCK_SIZE, 0x00FFFF, constant.BLOCK_DEPTH);
+	}
 }
 
-setupSocket(socket);
 setupGraphic();
+setupGameObject();
+setupSocket(socket);
 requestAnimFrame(animate);
 //Graphic
 // animate();
