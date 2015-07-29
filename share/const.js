@@ -11,6 +11,7 @@
 
 	exports.PLAYER_CONFIG = {
 	    BORDER: 5,
+	    SPEED: 5,
 	    TEXT_COLOR: '#FFFFFF',
 	    TEXT_BORDER: '#000000',
 	    TEXT_BORDER_SIZE: 3,
@@ -20,6 +21,7 @@
 
 	exports.ENEMY_CONFIG = {
 	    BORDER: 5,
+	    SPEED: 5,
 	    TEXT_COLOR: '#FFFFFF',
 	    TEXT_BORDER: '#000000',
 	    TEXT_BORDER_SIZE: 3,
@@ -47,7 +49,7 @@
 
 	// Misc config
 	exports.DIR = [{x: -1, y: 0}, {x: 0, y: -1}, {x: 1, y: 0}, {x: 0, y: 1}];
-	exports.BLOCK_SIZE = 45;
+	exports.BLOCK_SIZE = 60;
 
 	//Depth
 	exports.BULLET_DEPTH = 2;

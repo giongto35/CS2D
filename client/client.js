@@ -24,7 +24,7 @@ var interval = 1000 / fps;
 var now;
 var then = Date.now();
 var pingTime = 0;
-var pingTimeLim = 1000;
+var pingTimeLim = 10000;
 var playerSnapshot = [];
 var tiles = [[]];
 
@@ -136,12 +136,24 @@ function checkCollision(obj1, obj2, lim) {
 }
 
 function movePlayer(player, d) {
-	player.x += constant.DIR[d].x;
-	player.y += constant.DIR[d].y;
+	//Client prediction
+	player.x += constant.DIR[d].x * constant.PLAYER_CONFIG.SPEED;
+	player.y += constant.DIR[d].y * constant.PLAYER_CONFIG.SPEED;
 	for (var iPlayer in players) {
 		if (players[iPlayer] !== player && checkCollision(player, players[iPlayer], 2 * constant.PLAYER_CONFIG.DEFAULT_SIZE)) {
-			player.x -= constant.DIR[d].x;
-			player.y -= constant.DIR[d].y;
+			player.x -= constant.DIR[d].x * constant.PLAYER_CONFIG.SPEED;
+			player.y -= constant.DIR[d].y * constant.PLAYER_CONFIG.SPEED;
+			return;
+		}
+	}
+
+	for (var iBlock in blocks) {
+		var block = blocks[iBlock];
+		if (checkCirRectCollision(
+			{x: player.x, y: player.y, radius: constant.PLAYER_CONFIG.DEFAULT_SIZE}, 
+			{x1: block.x, y1: block.y, x2: block.x + constant.BLOCK_SIZE, y2: block.y + constant.BLOCK_SIZE})) {
+			player.x -= constant.DIR[d].x * constant.PLAYER_CONFIG.SPEED;
+			player.y -= constant.DIR[d].y * constant.PLAYER_CONFIG.SPEED;
 			return;
 		}
 	}

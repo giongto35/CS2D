@@ -53,12 +53,12 @@ function setupGameObject() {
 }
 
 function movePlayer(player, d) {
-	player.x += constant.DIR[d].x;
-	player.y += constant.DIR[d].y;
+	player.x += constant.DIR[d].x * constant.PLAYER_CONFIG.SPEED;
+	player.y += constant.DIR[d].y * constant.PLAYER_CONFIG.SPEED;
 	for (var iPlayer in players) {
 		if (players[iPlayer] !== player && checkCollision(player, players[iPlayer], 2 * constant.PLAYER_CONFIG.DEFAULT_SIZE)) {
-			player.x -= constant.DIR[d].x;
-			player.y -= constant.DIR[d].y;
+			player.x -= constant.DIR[d].x * constant.PLAYER_CONFIG.SPEED;
+			player.y -= constant.DIR[d].y * constant.PLAYER_CONFIG.SPEED;
 			return;
 		}
 	}
@@ -68,8 +68,8 @@ function movePlayer(player, d) {
 		if (checkCirRectCollision(
 			{x: player.x, y: player.y, radius: constant.PLAYER_CONFIG.DEFAULT_SIZE}, 
 			{x1: block.x, y1: block.y, x2: block.x + constant.BLOCK_SIZE, y2: block.y + constant.BLOCK_SIZE})) {
-			player.x -= constant.DIR[d].x;
-			player.y -= constant.DIR[d].y;
+			player.x -= constant.DIR[d].x * constant.PLAYER_CONFIG.SPEED;
+			player.y -= constant.DIR[d].y * constant.PLAYER_CONFIG.SPEED;
 			return;
 		}
 	}
