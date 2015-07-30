@@ -96,6 +96,7 @@ function updatePosition(player, data) {
 	if (data.id == player.id) {
 		var pos = playerSnapshot.shift();
 		console.log(pos);
+		console.log(data);
 		if (pos !== undefined && !(pos.x == data.x && pos.y == data.y)) {
 			player.x = data.x;
 			player.y = data.y;
