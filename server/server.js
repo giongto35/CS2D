@@ -55,6 +55,16 @@ function setupGameObject() {
 function movePlayer(player, d) {
 	player.x += constant.DIR[d].x * constant.PLAYER_CONFIG.SPEED;
 	player.y += constant.DIR[d].y * constant.PLAYER_CONFIG.SPEED;
+
+	if (player.x < constant.PLAYER_CONFIG.DEFAULT_SIZE || 
+		player.x > constant.GAME_WIDTH - constant.PLAYER_CONFIG.DEFAULT_SIZE || 
+		player.y < constant.PLAYER_CONFIG.DEFAULT_SIZE || 
+		player.y > constant.GAME_HEIGHT - constant.PLAYER_CONFIG.DEFAULT_SIZE) {
+		player.x -= constant.DIR[d].x * constant.PLAYER_CONFIG.SPEED;
+		player.y -= constant.DIR[d].y * constant.PLAYER_CONFIG.SPEED;
+		return;
+	}
+	
 	for (var iPlayer in players) {
 		if (players[iPlayer] !== player && checkCollision(player, players[iPlayer], 2 * constant.PLAYER_CONFIG.DEFAULT_SIZE)) {
 			player.x -= constant.DIR[d].x * constant.PLAYER_CONFIG.SPEED;
@@ -180,7 +190,7 @@ socketServer.on('connection', function connection(socket) {
 	sendCurrentState(socket);
 
 	LOG('INFO: Sent INIT package for existing sockets');
-	var player = new gameObject.Player(curr_id++, 10, 10, socket);
+	var player = new gameObject.Player(curr_id++, 60, 60, socket);
 	players.push(player);
 	
 	socket.send(coding.encrypt({

@@ -139,6 +139,16 @@ function movePlayer(player, d) {
 	//Client prediction
 	player.x += constant.DIR[d].x * constant.PLAYER_CONFIG.SPEED;
 	player.y += constant.DIR[d].y * constant.PLAYER_CONFIG.SPEED;
+
+	if (player.x < constant.PLAYER_CONFIG.DEFAULT_SIZE || 
+		player.x > constant.GAME_WIDTH - constant.PLAYER_CONFIG.DEFAULT_SIZE || 
+		player.y < constant.PLAYER_CONFIG.DEFAULT_SIZE || 
+		player.y > constant.GAME_HEIGHT - constant.PLAYER_CONFIG.DEFAULT_SIZE) {
+		player.x -= constant.DIR[d].x * constant.PLAYER_CONFIG.SPEED;
+		player.y -= constant.DIR[d].y * constant.PLAYER_CONFIG.SPEED;
+		return;
+	}
+
 	for (var iPlayer in players) {
 		if (players[iPlayer] !== player && checkCollision(player, players[iPlayer], 2 * constant.PLAYER_CONFIG.DEFAULT_SIZE)) {
 			player.x -= constant.DIR[d].x * constant.PLAYER_CONFIG.SPEED;
@@ -217,6 +227,11 @@ function setupGUI() {
 	pingText = drawText(0, 0, "", constant.TEXT_DEPTH);
 }
 
+function setupMap() {
+	//Draw border
+	new Map(0, 0, constant.GAME_WIDTH, constant.GAME_HEIGHT);
+}
+
 function setupGameObject() {
 	tiles = new Array(Math.trunc(constant.GAME_HEIGHT / constant.BLOCK_SIZE) + 1);
 	for(var i = 0; i < tiles.length; i++) {
@@ -243,6 +258,7 @@ function setupGraphic() {
 	graphicRenderer.backgroundColor = 0xFFFFFF;
     graphicStage = new PIXI.Container();
     setupGUI();
+    setupMap();
 }
 
 function processMouseEvent(id, x1, y1, x2, y2) {
@@ -290,6 +306,14 @@ function sendPingEvent() {
 	socket.send(coding.encrypt({command: constant.COMMAND_TYPE.PING, stime: Date.now() % 100000}));
 }
 
+function toAbsoluteX(x) {
+	return x + player.x - screenWidth / 2;
+}
+
+function toAbsoluteY(y) {
+	return y + player.y - screenHeight / 2;
+}
+
 function updateGameState() {
 	//update by game input
 	for (var m in gameInput.keyboard) {
@@ -299,9 +323,11 @@ function updateGameState() {
 	}
 	if (gameInput.mouse.down) {
 		if (gameInput.keyboard[constant.KEY_SHIFT]) {
-			processMouseBuildEvent(gameInput.mouse.x, gameInput.mouse.y);
+			if (dist(toAbsoluteX(gameInput.mouse.x), toAbsoluteY(gameInput.mouse.y), player.x, player.y) > constant.BUILD_LIM) {
+				processMouseBuildEvent(toAbsoluteX(gameInput.mouse.x), toAbsoluteY(gameInput.mouse.y));
+			}
 		} else {
-			processMouseEvent(player.id, player.x, player.y, gameInput.mouse.x, gameInput.mouse.y);			
+			processMouseEvent(player.id, player.x, player.y, toAbsoluteX(gameInput.mouse.x), toAbsoluteY(gameInput.mouse.y));
 		}
 	}
 
@@ -330,8 +356,6 @@ function gameLoop() {
 
     }
 }
-
-
 
 function animate() {	
     requestAnimationFrame(animate);
@@ -421,11 +445,17 @@ function drawRectangle(x1, y1, x2, y2, color, depth) {
 	rect.beginFill(color);
 	rect.drawRect(x1, y1, x2, y2);
 	rect.z = depth;
-	console.log(graphicStage);
-	console.log("HIHIEE");
 	graphicStage.addChild(rect);
 
 	return rect;
+}
+
+function toRelativeX(x) {
+	return x - player.x + screenWidth / 2;
+}
+
+function toRelativeY(y) {
+	return y - player.y + screenHeight / 2;
 }
 
 class GraphicObject {
@@ -438,8 +468,8 @@ class GraphicObject {
 	}
 
 	updateGraphic() {
-		this.graphic.x = this.x;
-		this.graphic.y = this.y;
+		this.graphic.x = toRelativeX(this.x);
+		this.graphic.y = toRelativeY(this.y);
 	}
 
 	invalid() {
@@ -470,6 +500,16 @@ class Player extends GraphicObject {
 		this.graphic = drawCircle(0, 0, constant.PLAYER_CONFIG.DEFAULT_SIZE, color, constant.PLAYER_DEPTH);
 		this.reloadInterval = reloadInterval !== undefined ? reloadInterval : 100;
 		this.shotTime = -1000000;
+	}
+
+	updateGraphic() {
+		//if it is main player
+		if (this === player) {
+			this.graphic.x = screenWidth / 2;
+			this.graphic.y = screenHeight / 2;
+		} else {
+			super.updateGraphic();
+		}
 	}
 }
 
@@ -518,6 +558,14 @@ class Block extends GraphicObject {
 	}
 }
 
+class Map extends GraphicObject {
+	constructor (x1, y1, x2, y2) {
+		super(-1, x1, y1);
+		this.x = x1;
+		this.y = y1;
+		this.graphic = drawRectangle(x1, y1, x2, y2, 0xFFFFFF, constant.MAP_DEPTH);
+	}
+}
 setupGraphic();
 setupGameObject();
 setupSocket(socket);

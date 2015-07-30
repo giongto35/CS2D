@@ -50,8 +50,10 @@
 	// Misc config
 	exports.DIR = [{x: -1, y: 0}, {x: 0, y: -1}, {x: 1, y: 0}, {x: 0, y: 1}];
 	exports.BLOCK_SIZE = 60;
+	exports.BUILD_LIM = 200;
 
 	//Depth
+	exports.MAP_DEPTH = 1;
 	exports.BULLET_DEPTH = 2;
 	exports.BLOCK_DEPTH = 3;
 	exports.PLAYER_DEPTH = 4;
