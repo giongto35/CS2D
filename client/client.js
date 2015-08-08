@@ -1,6 +1,7 @@
 'use strict';
 
 var graphicStage = null;
+var masterStage = null;
 var graphicRenderer = null;
 
 var screenWidth = window.innerWidth;
@@ -27,6 +28,8 @@ var pingTime = 0;
 var pingTimeLim = 10000;
 var playerSnapshot = [];
 var tiles = [[]];
+var fog = null;
+var background = null;
 
 window.onload = function() {
 	window.addEventListener('keydown', function (e) {
@@ -95,7 +98,6 @@ function updatePosition(player, data) {
 	//update player, check snapshot
 	if (data.id == player.id) {
 		var pos = playerSnapshot.shift();
-		console.log(pos);
 		console.log(data);
 		if (pos !== undefined && !(pos.x == data.x && pos.y == data.y)) {
 			player.x = data.x;
@@ -137,15 +139,19 @@ function checkCollision(obj1, obj2, lim) {
 	return (dist(obj1.x, obj1.y, obj2.x, obj2.y) < lim);
 }
 
+function inField(x, y, size) {
+	return x >= size && 
+		x <= constant.GAME_WIDTH - size &&
+		y >= size &&
+		y <= constant.GAME_HEIGHT - size
+}
+
 function movePlayer(player, d) {
 	//Client prediction
 	player.x += constant.DIR[d].x * constant.PLAYER_CONFIG.SPEED;
 	player.y += constant.DIR[d].y * constant.PLAYER_CONFIG.SPEED;
 
-	if (player.x < constant.PLAYER_CONFIG.DEFAULT_SIZE || 
-		player.x > constant.GAME_WIDTH - constant.PLAYER_CONFIG.DEFAULT_SIZE || 
-		player.y < constant.PLAYER_CONFIG.DEFAULT_SIZE || 
-		player.y > constant.GAME_HEIGHT - constant.PLAYER_CONFIG.DEFAULT_SIZE) {
+	if (!inField(player.x, player.y, constant.PLAYER_CONFIG.DEFAULT_SIZE)) {
 		player.x -= constant.DIR[d].x * constant.PLAYER_CONFIG.SPEED;
 		player.y -= constant.DIR[d].y * constant.PLAYER_CONFIG.SPEED;
 		return;
@@ -258,7 +264,16 @@ function setupGraphic() {
 	graphicRenderer.view.style.top = '0px';
 	graphicRenderer.view.style.left = '0px';
 	graphicRenderer.backgroundColor = 0xFFFFFF;
-    graphicStage = new PIXI.Container();
+	masterStage = new PIXI.Container(); //Contain GUI and GraphicStage
+    graphicStage = new PIXI.Container(); //affected by fog
+    
+    fog = drawCircle(screenWidth / 2, screenHeight / 2, constant.FOG_RANGE, 0x000000, 0);
+    background = drawRectangle(0, 0, screenWidth, screenHeight, 0x000000, 0, masterStage);
+
+    graphicStage.addChild(fog);
+    graphicStage.mask = fog;
+
+    masterStage.addChild(graphicStage);
     setupGUI();
     setupMap();
 }
@@ -273,7 +288,8 @@ function processMouseEvent(id, x1, y1, x2, y2) {
 function processMouseBuildEvent(x, y) {
 	var yblock = Math.trunc(y / constant.BLOCK_SIZE);
 	var xblock = Math.trunc(x / constant.BLOCK_SIZE);
-	if (tiles[yblock][xblock] !== true) {
+	if (tiles[yblock][xblock] !== true &&
+		inField(x, y, 0)) {
 		blocks.push(new Block(xblock * constant.BLOCK_SIZE, yblock * constant.BLOCK_SIZE));
 		tiles[yblock][xblock] = true;
 		//Can someone exploit here because of precalculation in client?
@@ -373,7 +389,7 @@ function animate() {
     			return 1;
 		  	return 0;
 		});
-	    graphicRenderer.render(graphicStage);
+	    graphicRenderer.render(masterStage);
 	    then = now - (delta % interval);
 	}
 }
@@ -426,6 +442,10 @@ function drawText(x, y, text, depth) {
 	graphicStage.addChild(text);
 	text.position.x = x;
 	text.position.y = y;
+	text.blendMode = 1;
+	text.fill = 0xFFFF00;
+	text.color = 0xFFFF00;
+	console.log(text);
 	text.z = depth;
 	return text;
 }
@@ -441,13 +461,16 @@ function drawCircle(centerX, centerY, radius, color, depth) {
 	return circle;
 }
 
-function drawRectangle(x1, y1, x2, y2, color, depth) {
+function drawRectangle(x1, y1, x2, y2, color, depth, container) {
 	var rect = new PIXI.Graphics();
 	rect.lineStyle(2, 0x000100, 1);
 	rect.beginFill(color);
 	rect.drawRect(x1, y1, x2, y2);
 	rect.z = depth;
-	graphicStage.addChild(rect);
+	if (container === undefined)
+		graphicStage.addChild(rect);
+	else
+		container.addChild(rect);
 
 	return rect;
 }
@@ -519,6 +542,7 @@ class Bullet extends GraphicObject {
 	constructor (stime, x1, y1, dx, dy) {
 		super(-1, x1, y1);
 		this.graphic = drawCircle(0, 0, 1, 0x000000, constant.BULLET_DEPTH);
+		this.graphic.visbile = false;
 		this.sx = x1;
 		this.sy = y1;
 		this.dx = dx;
@@ -544,6 +568,9 @@ class Bullet extends GraphicObject {
 	update() {
 		var cur = Date.now() % 100000;
 		if (cur > this.stime) {
+			if (this.graphic.visible == false) {
+				this.graphic.visbile = true;
+			}
 			this.x = this.sx + this.dx * (cur - this.stime);
 			this.y = this.sy + this.dy * (cur - this.stime);
 		}
@@ -568,6 +595,7 @@ class Map extends GraphicObject {
 		this.graphic = drawRectangle(x1, y1, x2, y2, 0xFFFFFF, constant.MAP_DEPTH);
 	}
 }
+
 setupGraphic();
 setupGameObject();
 setupSocket(socket);

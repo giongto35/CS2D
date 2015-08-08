@@ -30,8 +30,8 @@
 	};
 
 	// Game config
-	exports.GAME_WIDTH = 10000;
-	exports.GAME_HEIGHT = 10000;
+	exports.GAME_WIDTH = 3000;
+	exports.GAME_HEIGHT = 3000;
 
     // Key config
 	exports.KEY_SHIFT = 16;
@@ -51,6 +51,7 @@
 	exports.DIR = [{x: -1, y: 0}, {x: 0, y: -1}, {x: 1, y: 0}, {x: 0, y: 1}];
 	exports.BLOCK_SIZE = 60;
 	exports.BUILD_LIM = 200;
+	exports.FOG_RANGE = 350;
 
 	//Depth
 	exports.MAP_DEPTH = 1;
