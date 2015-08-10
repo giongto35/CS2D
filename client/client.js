@@ -28,6 +28,7 @@ var pingTime = 0;
 var pingTimeLim = 10000;
 var playerSnapshot = [];
 var tiles = [[]];
+var fogMask = null;
 var fog = null;
 var background = null;
 
@@ -267,11 +268,12 @@ function setupGraphic() {
 	masterStage = new PIXI.Container(); //Contain GUI and GraphicStage
     graphicStage = new PIXI.Container(); //affected by fog
     
-    fog = drawCircle(screenWidth / 2, screenHeight / 2, constant.FOG_RANGE, 0x000000, 0);
+    fogMask = drawCircle(screenWidth / 2, screenHeight / 2, constant.FOG_RANGE, 0x000000, 0);
+    fog = drawCircle(screenWidth / 2, screenHeight / 2, constant.FOG_RANGE, 0xFFFFFF, 0);
     background = drawRectangle(0, 0, screenWidth, screenHeight, 0x000000, 0, masterStage);
 
     graphicStage.addChild(fog);
-    graphicStage.mask = fog;
+    graphicStage.mask = fogMask;
 
     masterStage.addChild(graphicStage);
     setupGUI();
@@ -393,49 +395,48 @@ function animate() {
 	    then = now - (delta % interval);
 	}
 }
-/**
- * @author Mat Groves http://matgroves.com/ @Doormat23
- */
- 
-/**
- * This is the base class for creating a PIXI filter. Currently only webGL supports filters.
- * If you want to make a custom filter this should be your base class.
- * @class AbstractFilter
- * @constructor
- * @param fragmentSrc {Array} The fragment source in an array of strings.
- * @param uniforms {Object} An object containing the uniforms for this filter.
- */
-PIXI.AbstractFilter = function(fragmentSrc, uniforms)
-{
-    /**
-    * An array of passes - some filters contain a few steps this array simply stores the steps in a liniear fashion.
-    * For example the blur filter has two passes blurX and blurY.
-    * @property passes
-    * @type Array an array of filter objects
-    * @private
-    */
-    this.passes = [this];
- 
-    this.shaders = [];
-    
-    this.dirty = true;
- 
-    this.padding = 0;
- 
-    this.uniforms = uniforms || {};
 
-    this.fragmentSrc = fragmentSrc || [];
+PIXI.BorderFilter = function() {
+    PIXI.AbstractFilter.call(this);
+
+    this.passes = [ this ];
+    
+    this.uniforms = {
+        pos: { type: '3f', value: 1 }
+    };
+
+	this.fragmentSrc = 
+	    'precision mediump float;\n' +
+	    'varying vec4 vColor;\n\n' +
+
+	    'void main(void) {\n' +
+	        // 'if((gl_FragCoord.x < 0.5) || (gl_FragCoord.y < 0.5)) {\n' +
+	       	//     'gl_FragColor = vec4(1., 1., 1., 1.);\n' +
+	        // '} else {\n' +
+	            'gl_FragColor = vColor;\n' +
+	        // '}\n' +
+	    '}\n';
+
 };
- 
-PIXI.AbstractFilter.prototype.constructor = PIXI.AbstractFilter;
- 
-PIXI.AbstractFilter.prototype.syncUniforms = function()
-{
-    for(var i=0,j=this.shaders.length; i<j; i++)
-    {
-        this.shaders[i].dirty = true;
-    }
+
+PIXI.BorderFilter.prototype = Object.create(PIXI.AbstractFilter.prototype);
+PIXI.BorderFilter.prototype.constructor = PIXI.BorderFilter;
+
+PIXI.FogFilter = function() {
+	PIXI.AbstractFilter.call(this);
+
+	this.passes = [ this ];
+
+	this.fragmentSrc = [
+        'precision mediump float;',
+        'void main(void) {',
+    		'gl_FragColor = vec4(1., 1., 1., 1.);',
+        '}'
+    ];
 };
+
+PIXI.FogFilter.prototype = Object.create(PIXI.AbstractFilter.prototype);
+PIXI.FogFilter.prototype.constructor = PIXI.FogFilter;
 
 function drawText(x, y, text, depth) {
 	var text = new PIXI.Text(text);
@@ -523,6 +524,8 @@ class Player extends GraphicObject {
 		super(id, x, y);
 		var color = mainChar === true ? constant.PLAYER_CONFIG.DEFAULT_COLOR : constant.ENEMY_CONFIG.DEFAULT_COLOR;
 		this.graphic = drawCircle(0, 0, constant.PLAYER_CONFIG.DEFAULT_SIZE, color, constant.PLAYER_DEPTH);
+		this.graphic.filters = [new PIXI.filters.DropShadowFilter()];
+
 		this.reloadInterval = reloadInterval !== undefined ? reloadInterval : 100;
 		this.shotTime = -1000000;
 	}
@@ -541,13 +544,14 @@ class Player extends GraphicObject {
 class Bullet extends GraphicObject {
 	constructor (stime, x1, y1, dx, dy) {
 		super(-1, x1, y1);
-		this.graphic = drawCircle(0, 0, 1, 0x000000, constant.BULLET_DEPTH);
-		this.graphic.visbile = false;
+		this.graphic = drawCircle(0, 0, 2, 0x000000, constant.BULLET_DEPTH);
+		this.graphic.alpha = 0;
 		this.sx = x1;
 		this.sy = y1;
 		this.dx = dx;
 		this.dy = dy;
 		this.stime = stime;
+		// this.dust = [];
 	}
 
 	invalid() {
@@ -568,11 +572,19 @@ class Bullet extends GraphicObject {
 	update() {
 		var cur = Date.now() % 100000;
 		if (cur > this.stime) {
-			if (this.graphic.visible == false) {
-				this.graphic.visbile = true;
+			if (this.graphic.alpha == 0) {
+				this.graphic.alpha = 100;
 			}
 			this.x = this.sx + this.dx * (cur - this.stime);
 			this.y = this.sy + this.dy * (cur - this.stime);
+			// for(var i = 0; i < this.dust.length; i++){
+			// 	var dust = this.dust[i];
+			// 	if (dust.update()) {
+			// 		var index = this.dust.indexOf(dust);
+			// 		this.dust.splice(index,1);
+			// 	};
+			// }
+			// this.dust.push(new Dust(this.x, this.y));	
 		}
 		this.updateGraphic();
 	}
@@ -584,6 +596,40 @@ class Block extends GraphicObject {
 		this.x = x; //Math.trunc(x / constant.BLOCK_SIZE) * constant.BLOCK_SIZE;
 		this.y = y; //Math.trunc(y / constant.BLOCK_SIZE) * constant.BLOCK_SIZE;
 		this.graphic = drawRectangle(0, 0, constant.BLOCK_SIZE, constant.BLOCK_SIZE, 0x00FFFF, constant.BLOCK_DEPTH);
+
+		// // var renderTexture = new PIXI.RenderTexture(constant.BLOCK_SIZE, constant.BLOCK_SIZE);
+		// // renderTexture.render(graphic);
+		// // var renderedContainer = new PIXI.Sprite(renderTexture);
+
+		// this.graphic = renderedContainer;
+
+		// var filter = new PIXI.filters.DropShadowFilter();
+		// filter.applyFilter(graphicRenderer, this.graphic, player.graphic);
+		// console.log(getShader(graphicRenderer));
+	}
+}
+
+
+class Dust extends GraphicObject{
+	constructor (x, y) {
+		super(-1, x, y);
+		this.graphic = drawCircle(0, 0, 2, 0x00FFFF, constant.BULLET_DEPTH);
+		this.graphic.rotation = Math.random() * 360;
+		
+		this.x = x;
+		this.y = y;
+		// this.graphic.anchor.x = 0.5;
+		// this.graphic.anchor.y = 0.5;
+		this.graphic.alpha = 0.5;
+	}	
+
+	update() {
+		this.graphic.alpha -= 0.03;
+		if(this.graphic.alpha <= 0){
+			graphicStage.removeChild(this.graphic);					
+			return true;
+		}
+		return false;		
 	}
 }
 
