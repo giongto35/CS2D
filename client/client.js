@@ -352,13 +352,10 @@ PIXI.FogFilter.prototype = Object.create(PIXI.AbstractFilter.prototype);
 PIXI.FogFilter.prototype.constructor = PIXI.FogFilter;
 
 function drawText(x, y, text, depth) {
-	var text = new PIXI.Text(text);
-	graphicStage.addChild(text);
+	var text = new PIXI.Text(text, {fill: 0x0033FF});
+	masterStage.addChild(text);
 	text.position.x = x;
 	text.position.y = y;
-	text.blendMode = 0;
-	text.fill = 'red';
-	text.color = 0x00FF00;
 	text.z = depth;
 	return text;
 }
@@ -467,7 +464,7 @@ function setupGraphic() {
     
     // fogMask = drawCircle(screenWidth / 2, screenHeight / 2, constant.FOG_RANGE, 0x000000, 0);
     // fog = drawCircle(screenWidth / 2, screenHeight / 2, constant.FOG_RANGE, 0xFFFFFF, 0);
-    // background = drawRectangle(0, 0, screenWidth, screenHeight, 0x000000, 0, masterStage);
+    background = drawRectangle(0, 0, screenWidth, screenHeight, 0x000000, 0, masterStage);
 
     // graphicStage.addChild(fog);
     // graphicStage.mask = fogMask;
