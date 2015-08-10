@@ -113,7 +113,7 @@ function updatePosition(player, data) {
 }
 
 function initPlayer(data) {
-	var tempPlayer = new Player(data.id, data.x, data.y, data.main === 1);
+	var tempPlayer = new Player(data.id, data.x, data.y, data.health, data.main === 1);
 	if (data.main == 1) {
 		player = tempPlayer;
 	} 
@@ -343,7 +343,7 @@ PIXI.FogFilter = function() {
         {
             screenWidth: { type: '1f', value: screenWidth },
             screenHeight: { type: '1f', value: screenHeight },
-            fogRange: { type: '1f', value: 350.0 }
+            fogRange: { type: '1f', value: constant.FOG_RANGE }
         }
     );
 };
@@ -360,6 +360,21 @@ function drawText(x, y, text, depth) {
 	return text;
 }
 
+function drawPlayer(centerX, centerY, mainChar) {
+	var playerGraphic = new PIXI.Container();
+	var color = mainChar === true ? constant.PLAYER_CONFIG.DEFAULT_COLOR : constant.ENEMY_CONFIG.DEFAULT_COLOR;
+	var body = drawCircle(0, 0, constant.PLAYER_CONFIG.DEFAULT_SIZE, color, constant.PLAYER_DEPTH);
+	var healthBar = drawRectangle(-50, -35, 100, 10, 0xFF0000, constant.PLAYER_DEPTH);
+	healthBar.healthBar = true; //set this Flag for futher tracing
+	playerGraphic.addChild(body);
+	playerGraphic.addChild(healthBar);
+
+	playerGraphic.z = constant.PLAYER_DEPTH;
+
+	graphicStage.addChild(playerGraphic);
+	return {player: playerGraphic, healthBar: healthBar, body: body};
+}
+
 function drawCircle(centerX, centerY, radius, color, depth) {
 	var circle = new PIXI.Graphics();
     circle.lineStyle(2, 0x000100, 1);
@@ -371,11 +386,11 @@ function drawCircle(centerX, centerY, radius, color, depth) {
 	return circle;
 }
 
-function drawRectangle(x1, y1, x2, y2, color, depth, container) {
+function drawRectangle(x1, y1, w, h, color, depth, container) {
 	var rect = new PIXI.Graphics();
 	rect.lineStyle(2, 0x000100, 1);
 	rect.beginFill(color);
-	rect.drawRect(x1, y1, x2, y2);
+	rect.drawRect(x1, y1, w, h);
 	rect.z = depth;
 	if (container === undefined)
 		graphicStage.addChild(rect);
@@ -485,8 +500,8 @@ class GraphicObject {
 	}
 
 	updateGraphic() {
-		this.graphic.x = toRelativeX(this.x);
-		this.graphic.y = toRelativeY(this.y);
+		this.graphic.position.x = toRelativeX(this.x);
+		this.graphic.position.y = toRelativeY(this.y);			
 	}
 
 	invalid() {
@@ -511,14 +526,19 @@ class GraphicObject {
 }
 
 class Player extends GraphicObject {
-	constructor (id, x, y, mainChar, reloadInterval) {
+	constructor (id, x, y, health, mainChar, reloadInterval) {
 		super(id, x, y);
-		var color = mainChar === true ? constant.PLAYER_CONFIG.DEFAULT_COLOR : constant.ENEMY_CONFIG.DEFAULT_COLOR;
-		this.graphic = drawCircle(0, 0, constant.PLAYER_CONFIG.DEFAULT_SIZE, color, constant.PLAYER_DEPTH);
-		this.graphic.filters = [new PIXI.filters.DropShadowFilter()];
+		// var color = mainChar === true ? constant.PLAYER_CONFIG.DEFAULT_COLOR : constant.ENEMY_CONFIG.DEFAULT_COLOR;
+		// this.graphic = drawCircle(0, 0, constant.PLAYER_CONFIG.DEFAULT_SIZE, color, constant.PLAYER_DEPTH);
+		var playerGraphic = drawPlayer(0, 0, mainChar);
+		this.graphic = playerGraphic.player;
+		this.healthBarGraphic = playerGraphic.healthBar;
+		this.bodyGraphic = playerGraphic.body;
+		this.bodyGraphic.filters = [new PIXI.filters.DropShadowFilter()];
 
 		this.reloadInterval = reloadInterval !== undefined ? reloadInterval : 100;
 		this.shotTime = -1000000;
+		this.health = health;
 	}
 
 	updateGraphic() {
@@ -529,6 +549,8 @@ class Player extends GraphicObject {
 		} else {
 			super.updateGraphic();
 		}
+		console.log(this.health);
+		this.healthBarGraphic.width = this.health;
 	}
 }
 
@@ -568,14 +590,6 @@ class Bullet extends GraphicObject {
 			}
 			this.x = this.sx + this.dx * (cur - this.stime);
 			this.y = this.sy + this.dy * (cur - this.stime);
-			// for(var i = 0; i < this.dust.length; i++){
-			// 	var dust = this.dust[i];
-			// 	if (dust.update()) {
-			// 		var index = this.dust.indexOf(dust);
-			// 		this.dust.splice(index,1);
-			// 	};
-			// }
-			// this.dust.push(new Dust(this.x, this.y));	
 		}
 		this.updateGraphic();
 	}

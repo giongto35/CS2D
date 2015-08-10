@@ -158,6 +158,7 @@ function sendCurrentState(socket) {
 			id: player.id,
 			x: player.x,
 			y: player.y,
+			health: player.health,
 			main: 0
 		}));
 	}
@@ -190,7 +191,7 @@ socketServer.on('connection', function connection(socket) {
 	sendCurrentState(socket);
 
 	LOG('INFO: Sent INIT package for existing sockets');
-	var player = new gameObject.Player(curr_id++, 60, 60, socket);
+	var player = new gameObject.Player(curr_id++, 60, 60, 100, socket);
 	players.push(player);
 	
 	socket.send(coding.encrypt({
@@ -198,6 +199,7 @@ socketServer.on('connection', function connection(socket) {
 		id: player.id,
 		x: player.x,
 		y: player.y,
+		health: player.health,
 		main: 1
 	}));
 	LOG('INFO: Sent INIT package to initialize socket ' + player.id);
@@ -207,6 +209,7 @@ socketServer.on('connection', function connection(socket) {
 		id: player.id,
 		x: player.x,
 		y: player.y,
+		health: player.health,
 		main: 0
 	}));
 	LOG('INFO: Sent INIT package to all sockets except socket ' + player.id);

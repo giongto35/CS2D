@@ -2,10 +2,11 @@
 
 var constant = require('../share/const.js');
 
-var Player = function (id, x, y, socket) {
+var Player = function (id, x, y, health, socket) {
 	this.id = id;
 	this.x = x;
 	this.y = y;
+	this.health = health;
 	this.socket = socket;
 }
 

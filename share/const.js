@@ -51,7 +51,7 @@
 	exports.DIR = [{x: -1, y: 0}, {x: 0, y: -1}, {x: 1, y: 0}, {x: 0, y: 1}];
 	exports.BLOCK_SIZE = 60;
 	exports.BUILD_LIM = 200;
-	exports.FOG_RANGE = 350;
+	exports.FOG_RANGE = 500;
 
 	//Depth
 	exports.MAP_DEPTH = 1;
@@ -66,7 +66,7 @@
 
 	exports.COMMAND_TYPE = {INIT: 0, DESTROY: 1, KEYBOARD: 2, MOUSE: 3, MOUSEBUILD: 4, UPDATE: 5, SHOOT: 6, PING: 7};
 	exports.PACK = [
-		{id: 'Int32', x: 'Int32', y: 'Int32', main: 'Int32'}, //INIT
+		{id: 'Int32', x: 'Int32', y: 'Int32', health: 'Int32', main: 'Int32'}, //INIT
 		{id: 'Int32'}, //DESTROY
 		{id: 'Int32', key: 'Uint8'},  //KEYBOARD
 		{id: 'Int32', x1: 'Float32', y1: 'Float32', x2: 'Float32', y2: 'Float32', stime: 'Int32'}, //MOUSE
