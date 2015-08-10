@@ -199,87 +199,6 @@ function buildBlock(data) {
 	}
 }
 
-function setupSocket(socket) {
-
-	socket.onopen = function (event) { 
-
-	}
-
-	socket.onmessage = function (event) {
-		var data = coding.decrypt(event.data);
-		console.log(data);
-		switch (data.command) {
-			case constant.COMMAND_TYPE.INIT:
-				initPlayer(data);
-				break;
-			case constant.COMMAND_TYPE.UPDATE:
-				updatePosition(player, data);
-				break;
-			case constant.COMMAND_TYPE.DESTROY:
-				removePlayer(data);
-				break;
-			case constant.COMMAND_TYPE.SHOOT:
-				shootBullet(data);
-				break;
-			case constant.COMMAND_TYPE.PING:
-				showPing(data);
-				break;
-			case constant.COMMAND_TYPE.MOUSEBUILD:
-				buildBlock(data);
-				break;
-		}
-  	}
-
-}
-
-function setupGUI() {
-	pingText = drawText(0, 0, "", constant.TEXT_DEPTH);
-}
-
-function setupMap() {
-	//Draw border
-	new Map(0, 0, constant.GAME_WIDTH, constant.GAME_HEIGHT);
-}
-
-function setupGameObject() {
-	tiles = new Array(Math.trunc(constant.GAME_HEIGHT / constant.BLOCK_SIZE) + 1);
-	for(var i = 0; i < tiles.length; i++) {
-    	tiles[i] = new Array(Math.trunc(constant.GAME_WIDTH / constant.BLOCK_SIZE) + 1);
-	}
-}
-
-function setupGraphic() {
-	window.requestAnimFrame = (function(){
-	  return  window.requestAnimationFrame       ||
-	          window.webkitRequestAnimationFrame ||
-	          window.mozRequestAnimationFrame    ||
-	          function( callback ){
-	            window.setTimeout(callback, interval);
-	          };
-	})();
-
-	// var canvas = document.getElementById("myCanvas");
-    graphicRenderer = PIXI.autoDetectRenderer(screenWidth, screenHeight, {antialias: true});	
-    document.body.appendChild(graphicRenderer.view);
-	graphicRenderer.view.style.position = 'absolute';
-	graphicRenderer.view.style.top = '0px';
-	graphicRenderer.view.style.left = '0px';
-	graphicRenderer.backgroundColor = 0xFFFFFF;
-	masterStage = new PIXI.Container(); //Contain GUI and GraphicStage
-    graphicStage = new PIXI.Container(); //affected by fog
-    
-    fogMask = drawCircle(screenWidth / 2, screenHeight / 2, constant.FOG_RANGE, 0x000000, 0);
-    fog = drawCircle(screenWidth / 2, screenHeight / 2, constant.FOG_RANGE, 0xFFFFFF, 0);
-    background = drawRectangle(0, 0, screenWidth, screenHeight, 0x000000, 0, masterStage);
-
-    graphicStage.addChild(fog);
-    graphicStage.mask = fogMask;
-
-    masterStage.addChild(graphicStage);
-    setupGUI();
-    setupMap();
-}
-
 function processMouseEvent(id, x1, y1, x2, y2) {
 	if (Date.now() - player.shotTime > player.reloadInterval) {
 		socket.send(coding.encrypt({command: constant.COMMAND_TYPE.MOUSE, id: id, x1: x1, y1: y1, x2: x2, y2: y2, stime: Date.now() % 100000}));
@@ -372,9 +291,17 @@ function gameLoop() {
     		pingTime = Date.now();
     	}
 	}
-    else {
+    else {	
 
     }
+}
+
+function depthCompare(a, b) {
+	if (a.z < b.z)
+			return -1;
+		if (a.z > b.z)
+		return 1;
+  	return 0;
 }
 
 function animate() {	
@@ -384,55 +311,41 @@ function animate() {
 	//setup framerate
 	if (delta > interval) {
 	    gameLoop();
-	   	graphicStage.children.sort(function depthCompare(a,b) {
-			if (a.z < b.z)
-   				return -1;
-  			if (a.z > b.z)
-    			return 1;
-		  	return 0;
-		});
+	   	graphicStage.children.sort(depthCompare);
+	   	masterStage.children.sort(depthCompare);
 	    graphicRenderer.render(masterStage);
 	    then = now - (delta % interval);
 	}
 }
 
-PIXI.BorderFilter = function() {
-    PIXI.AbstractFilter.call(this);
-
-    this.passes = [ this ];
-    
-    this.uniforms = {
-        pos: { type: '3f', value: 1 }
-    };
-
-	this.fragmentSrc = 
-	    'precision mediump float;\n' +
-	    'varying vec4 vColor;\n\n' +
-
-	    'void main(void) {\n' +
-	        // 'if((gl_FragCoord.x < 0.5) || (gl_FragCoord.y < 0.5)) {\n' +
-	       	//     'gl_FragColor = vec4(1., 1., 1., 1.);\n' +
-	        // '} else {\n' +
-	            'gl_FragColor = vColor;\n' +
-	        // '}\n' +
-	    '}\n';
-
-};
-
-PIXI.BorderFilter.prototype = Object.create(PIXI.AbstractFilter.prototype);
-PIXI.BorderFilter.prototype.constructor = PIXI.BorderFilter;
-
 PIXI.FogFilter = function() {
-	PIXI.AbstractFilter.call(this);
-
-	this.passes = [ this ];
-
-	this.fragmentSrc = [
-        'precision mediump float;',
-        'void main(void) {',
-    		'gl_FragColor = vec4(1., 1., 1., 1.);',
-        '}'
-    ];
+    PIXI.AbstractFilter.call(this,
+        // vertex shader
+        null,
+        // fragment shader
+        ['precision mediump float;',
+        'varying vec2 vTextureCoord;',
+        'varying vec4 vColor;',
+        'uniform sampler2D uSampler;',
+        'uniform float screenWidth;',
+        'uniform float fogRange;',
+        'uniform float screenHeight;',
+        'void main(void)',
+        '{',
+        'float dist = sqrt((gl_FragCoord.x - screenWidth / 2.0) * (gl_FragCoord.x - screenWidth / 2.0) + (gl_FragCoord.y - screenHeight / 2.0) * (gl_FragCoord.y - screenHeight / 2.0));',
+        'gl_FragColor = texture2D(uSampler, vTextureCoord);',
+        // 'const float LOG2 = 1.442695;',
+        // 'float fogFactor = exp2(-5.0 * 5.0 * dist * dist * LOG2);',
+        // 'fogFactor = clamp(fogFactor, 0.0, 1.0);',
+        'gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.0, 0.0, 0.0), clamp((dist - 200.0) / (fogRange - 200.0), 0.0, 1.0) );',	
+		'}'].join('\n'),
+        // set the uniforms
+        {
+            screenWidth: { type: '1f', value: screenWidth },
+            screenHeight: { type: '1f', value: screenHeight },
+            fogRange: { type: '1f', value: 350.0 }
+        }
+    );
 };
 
 PIXI.FogFilter.prototype = Object.create(PIXI.AbstractFilter.prototype);
@@ -443,10 +356,9 @@ function drawText(x, y, text, depth) {
 	graphicStage.addChild(text);
 	text.position.x = x;
 	text.position.y = y;
-	text.blendMode = 1;
-	text.fill = 0xFFFF00;
-	text.color = 0xFFFF00;
-	console.log(text);
+	text.blendMode = 0;
+	text.fill = 'red';
+	text.color = 0x00FF00;
 	text.z = depth;
 	return text;
 }
@@ -482,6 +394,88 @@ function toRelativeX(x) {
 
 function toRelativeY(y) {
 	return y - player.y + screenHeight / 2;
+}
+
+function setupSocket(socket) {
+
+	socket.onopen = function (event) { 
+
+	}
+
+	socket.onmessage = function (event) {
+		var data = coding.decrypt(event.data);
+		console.log(data);
+		switch (data.command) {
+			case constant.COMMAND_TYPE.INIT:
+				initPlayer(data);
+				break;
+			case constant.COMMAND_TYPE.UPDATE:
+				updatePosition(player, data);
+				break;
+			case constant.COMMAND_TYPE.DESTROY:
+				removePlayer(data);
+				break;
+			case constant.COMMAND_TYPE.SHOOT:
+				shootBullet(data);
+				break;
+			case constant.COMMAND_TYPE.PING:
+				showPing(data);
+				break;
+			case constant.COMMAND_TYPE.MOUSEBUILD:
+				buildBlock(data);
+				break;
+		}
+  	}
+
+}
+
+function setupGUI() {
+	pingText = drawText(0, 0, "", constant.TEXT_DEPTH);
+}
+
+function setupMap() {
+	//Draw border
+	new Map(0, 0, constant.GAME_WIDTH, constant.GAME_HEIGHT);
+}
+
+function setupGameObject() {
+	tiles = new Array(Math.trunc(constant.GAME_HEIGHT / constant.BLOCK_SIZE) + 1);
+	for(var i = 0; i < tiles.length; i++) {
+    	tiles[i] = new Array(Math.trunc(constant.GAME_WIDTH / constant.BLOCK_SIZE) + 1);
+	}
+}
+
+function setupGraphic() {
+	window.requestAnimFrame = (function(){
+	  return  window.requestAnimationFrame       ||
+	          window.webkitRequestAnimationFrame ||
+	          window.mozRequestAnimationFrame    ||
+	          function( callback ){
+	            window.setTimeout(callback, interval);
+	          };
+	})();
+
+	// var canvas = document.getElementById("myCanvas");
+    graphicRenderer = PIXI.autoDetectRenderer(screenWidth, screenHeight, {antialias: true});	
+    document.body.appendChild(graphicRenderer.view);
+	graphicRenderer.view.style.position = 'absolute';
+	graphicRenderer.view.style.top = '0px';
+	graphicRenderer.view.style.left = '0px';
+	graphicRenderer.backgroundColor = 0xFFFFFF;
+	masterStage = new PIXI.Container(); //Contain GUI and GraphicStage
+    graphicStage = new PIXI.Container(); //affected by fog
+    
+    // fogMask = drawCircle(screenWidth / 2, screenHeight / 2, constant.FOG_RANGE, 0x000000, 0);
+    // fog = drawCircle(screenWidth / 2, screenHeight / 2, constant.FOG_RANGE, 0xFFFFFF, 0);
+    // background = drawRectangle(0, 0, screenWidth, screenHeight, 0x000000, 0, masterStage);
+
+    // graphicStage.addChild(fog);
+    // graphicStage.mask = fogMask;
+    graphicStage.filters = [new PIXI.FogFilter()];
+
+    masterStage.addChild(graphicStage);
+    setupGUI();
+    setupMap();
 }
 
 class GraphicObject {
