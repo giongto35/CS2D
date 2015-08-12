@@ -31,6 +31,8 @@ var tiles = [[]];
 var fogMask = null;
 var fog = null;
 var background = null;
+var polyFog = new PIXI.Graphics();
+var center = {x: screenWidth / 2, y: screenHeight / 2};
 
 window.onload = function() {
 	window.addEventListener('keydown', function (e) {
@@ -246,11 +248,11 @@ function sendPingEvent() {
 }
 
 function toAbsoluteX(x) {
-	return x + player.x - screenWidth / 2;
+	return x + player.x - center.x;
 }
 
 function toAbsoluteY(y) {
-	return y + player.y - screenHeight / 2;
+	return y + player.y - center.y;
 }
 
 function updateGameState() {
@@ -281,6 +283,8 @@ function updateGameState() {
 			obj.destroy();
 		}
 	}
+
+	drawFog();
 }
 
 function gameLoop() {
@@ -400,6 +404,113 @@ function drawRectangle(x1, y1, w, h, color, depth, container) {
 	return rect;
 }
 
+function drawPolygon(poly) {
+	var polygon = new PIXI.Graphics();
+	var points = [];
+	for (var iPoly in poly) {
+		points.push(new PIXI.Point(poly[iPoly].x, poly[iPoly].y));
+	}
+	polygon.lineStyle(2, 0x000000, 1);
+	polygon.beginFill(0x0000FF);
+	polygon.drawPolygon(points);
+	graphicStage.addChild(polygon);
+
+	return polygon;
+}
+
+function isOnSegment(x, y, x1, y1, x2, y2) {
+	return x >= Math.min(x1, x2) && x <= Math.max(x1, x2) && y >= Math.min(y1, y2) && y <= Math.max(y1, y2);
+}
+
+function intersect(x1, y1, x2, y2, x3, y3, x4, y4) {
+	var x12 = x1 - x2;
+	var x34 = x3 - x4;
+	var y12 = y1 - y2;
+	var y34 = y3 - y4;
+	var c = x12 * y34 - y12 * x34;
+
+	if (Math.abs(c) < 0.001) {
+		return {x: -1, y: -1};
+	} else {
+		var a = x1 * y2 - y1 * x2;
+		var b = x3 * y4 - y3 * x4;
+
+		var x = (a * x34 - b * x12) / c;
+		var y = (a * y34 - b * y12) / c;
+		if (isOnSegment(x, y, x1, y1, x2, y2) && isOnSegment(x, y, x3, y3, x4, y4)) {
+			return {x: x, y: y};
+		} else {
+			return {x: -1, y: -1};
+		}
+	}
+}
+
+
+function getShortestLine(x1, y1, x2, y2) {
+	var nearestPoint = {x: x2, y: y2};
+	for (var iBlock in blocks) {
+		var rblock = {x1: toRelativeX(blocks[iBlock].x), y1: toRelativeY(blocks[iBlock].y), x2: toRelativeX(blocks[iBlock].x)  + constant.BLOCK_SIZE, y2: toRelativeY(blocks[iBlock].y + constant.BLOCK_SIZE)};
+		
+		var point = intersect(x1, y1, x2, y2, rblock.x1, rblock.y1, rblock.x2, rblock.y1);
+		if (point.x !== -1 && point.y !== -1) {
+			if (dist(center.x, center.y, point.x, point.y) < dist(center.x, center.y, nearestPoint.x, nearestPoint.y)) {
+				nearestPoint = point;
+			}
+		}
+		point = intersect(x1, y1, x2, y2, rblock.x1, rblock.y1, rblock.x1, rblock.y2);
+		if (point.x !== -1 && point.y !== -1) {
+			if (dist(center.x, center.y, point.x, point.y) < dist(center.x, center.y, nearestPoint.x, nearestPoint.y)) {
+				nearestPoint = point;
+			}
+		}
+		point = intersect(x1, y1, x2, y2, rblock.x2, rblock.y1, rblock.x2, rblock.y2);
+		if (point.x !== -1 && point.y !== -1) {
+			if (dist(center.x, center.y, point.x, point.y) < dist(center.x, center.y, nearestPoint.x, nearestPoint.y)) {
+				nearestPoint = point;
+			}
+		}
+		point = intersect(x1, y1, x2, y2, rblock.x1, rblock.y2, rblock.x2, rblock.y2);
+		if (point.x !== -1 && point.y !== -1) {
+			if (dist(center.x, center.y, point.x, point.y) < dist(center.x, center.y, nearestPoint.x, nearestPoint.y)) {
+				nearestPoint = point;
+			}
+		}
+	}
+	return nearestPoint;
+}
+
+function crossCompare(point1, point2) {
+	if ((point1.x - center.x) * (point2.y - center.y) < (point1.y - center.y) * (point2.x - center.x))
+		return -1;
+	if ((point1.x - center.x) * (point2.y - center.y) > (point1.y - center.y) * (point2.x - center.x))
+		return 1;
+  	return 0;
+}
+
+function drawFog() {
+	var poly = [];
+	for (var iBlock in blocks) {
+		var rblock = {x1: toRelativeX(blocks[iBlock].x), y1: toRelativeY(blocks[iBlock].y), x2: toRelativeX(blocks[iBlock].x)  + constant.BLOCK_SIZE, y2: toRelativeY(blocks[iBlock].y + constant.BLOCK_SIZE)};
+		poly.push(getShortestLine(center.x, center.y, rblock.x1, rblock.y1));
+		poly.push(getShortestLine(center.x, center.y, rblock.x1, rblock.y2));
+		poly.push(getShortestLine(center.x, center.y, rblock.x2, rblock.y1));
+		poly.push(getShortestLine(center.x, center.y, rblock.x2, rblock.y2));
+	}
+	poly.sort(crossCompare);
+
+	if (poly.length > 0) {
+		var points = [];
+		for (var iPoly in poly) {
+			points.push(new PIXI.Point(poly[iPoly].x, poly[iPoly].y));
+		}
+		polyFog.clear();
+		polyFog.lineStyle(2, 0x000000, 1);
+		polyFog.beginFill(0x0000FF);
+		polyFog.drawPolygon(points);
+		graphicStage.addChild(polyFog);
+	}
+}
+
 function toRelativeX(x) {
 	return x - player.x + screenWidth / 2;
 }
@@ -482,7 +593,7 @@ function setupGraphic() {
     background = drawRectangle(0, 0, screenWidth, screenHeight, 0x000000, 0, masterStage);
 
     // graphicStage.addChild(fog);
-    // graphicStage.mask = fogMask;
+    graphicStage.mask = polyFog;
     graphicStage.filters = [new PIXI.FogFilter()];
 
     masterStage.addChild(graphicStage);
@@ -549,7 +660,6 @@ class Player extends GraphicObject {
 		} else {
 			super.updateGraphic();
 		}
-		console.log(this.health);
 		this.healthBarGraphic.width = this.health;
 	}
 }
