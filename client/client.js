@@ -489,6 +489,7 @@ function crossCompare(point1, point2) {
 
 function drawFog() {
 	var poly = [];
+	// poly.push(center);
 	for (var iBlock in blocks) {
 		var rblock = {x1: toRelativeX(blocks[iBlock].x), y1: toRelativeY(blocks[iBlock].y), x2: toRelativeX(blocks[iBlock].x)  + constant.BLOCK_SIZE, y2: toRelativeY(blocks[iBlock].y + constant.BLOCK_SIZE)};
 		poly.push(getShortestLine(center.x, center.y, rblock.x1, rblock.y1));
@@ -507,6 +508,10 @@ function drawFog() {
 		polyFog.lineStyle(2, 0x000000, 1);
 		polyFog.beginFill(0x0000FF);
 		polyFog.drawPolygon(points);
+		for (var iBlock in blocks) {
+			var rblock = {x1: toRelativeX(blocks[iBlock].x), y1: toRelativeY(blocks[iBlock].y), x2: toRelativeX(blocks[iBlock].x)  + constant.BLOCK_SIZE, y2: toRelativeY(blocks[iBlock].y + constant.BLOCK_SIZE)};
+			polyFog.drawRect(rblock.x1, rblock.y1, constant.BLOCK_SIZE, constant.BLOCK_SIZE);
+		}
 		graphicStage.addChild(polyFog);
 	}
 }
@@ -593,7 +598,7 @@ function setupGraphic() {
     background = drawRectangle(0, 0, screenWidth, screenHeight, 0x000000, 0, masterStage);
 
     // graphicStage.addChild(fog);
-    graphicStage.mask = polyFog;
+    // graphicStage.mask = polyFog;
     graphicStage.filters = [new PIXI.FogFilter()];
 
     masterStage.addChild(graphicStage);
