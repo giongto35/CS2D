@@ -58,7 +58,8 @@
 	exports.BULLET_DEPTH = 2;
 	exports.BLOCK_DEPTH = 3;
 	exports.PLAYER_DEPTH = 4;
-	exports.TEXT_DEPTH = 5;
+	exports.FOG_DEPTH = 5;
+	exports.TEXT_DEPTH = 6;
 
 	//make register function for command
 	//enum

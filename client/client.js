@@ -447,7 +447,8 @@ function intersect(x1, y1, x2, y2, x3, y3, x4, y4) {
 
 
 function getShortestLine(x1, y1, x2, y2) {
-	var nearestPoint = {x: x2, y: y2};
+	var p = getPointOnCircle(x2, y2);
+	var nearestPoint = {x: p.x, y: p.y};
 	for (var iBlock in blocks) {
 		var rblock = {x1: toRelativeX(blocks[iBlock].x), y1: toRelativeY(blocks[iBlock].y), x2: toRelativeX(blocks[iBlock].x)  + constant.BLOCK_SIZE, y2: toRelativeY(blocks[iBlock].y + constant.BLOCK_SIZE)};
 		
@@ -476,6 +477,8 @@ function getShortestLine(x1, y1, x2, y2) {
 			}
 		}
 	}
+
+	nearestPoint.line = isLine(nearestPoint.x, nearestPoint.y);
 	return nearestPoint;
 }
 
@@ -488,13 +491,15 @@ function crossCompare(point1, point2) {
 }
 
 function getPointOnCircle(x, y) {
-	return {x: center.x + (x - center.x) / dist(center.x, center.y, x, y) * constant.FOG_RANGE * 2, y: center.y + (y - center.y) / dist(center.x, center.y, x, y) * constant.FOG_RANGE * 2};
+	return {x: center.x + (x - center.x) / dist(center.x, center.y, x, y) * constant.FOG_RANGE, y: center.y + (y - center.y) / dist(center.x, center.y, x, y) * constant.FOG_RANGE};
 }
 
-function isLine(x, y, rect) {
+function isLine(x, y) {
 	x = x + (x - center.x) / dist(center.x, center.y, x, y) * 0.01;
 	y = y + (y - center.y) / dist(center.x, center.y, x, y) * 0.01;
-	return (x >= rect.x1 && x <= rect.x2 && y >= rect.y1 && y <= rect.y2) == false;
+	var yblock = Math.trunc(toAbsoluteY(y) / constant.BLOCK_SIZE);
+	var xblock = Math.trunc(toAbsoluteX(x) / constant.BLOCK_SIZE);
+	return (tiles[yblock][xblock] !== true);
 }
 
 function isValidArcLine(x, y, px, py, rect) {
@@ -511,32 +516,34 @@ function drawFog() {
 	// poly.push(center);
 	for (var iBlock in blocks) {
 		var rblock = {x1: toRelativeX(blocks[iBlock].x), y1: toRelativeY(blocks[iBlock].y), x2: toRelativeX(blocks[iBlock].x)  + constant.BLOCK_SIZE, y2: toRelativeY(blocks[iBlock].y + constant.BLOCK_SIZE)};
-
+		//TODO: Convert to line instead of segment
 		poly.push(getShortestLine(center.x, center.y, rblock.x1, rblock.y1));
 		//if is line and not blocked
-		if (isValidArcLine(rblock.x1, rblock.y1, poly[poly.length - 1].x, poly[poly.length - 1].y, rblock)) {
-			poly[poly.length - 1].line = true;
-		}
+		// if (isValidArcLine(rblock.x1, rblock.y1, poly[poly.length - 1].x, poly[poly.length - 1].y, rblock)) {
+		// 	poly[poly.length - 1].line = true;
+		// }
 
 		poly.push(getShortestLine(center.x, center.y, rblock.x1, rblock.y2));
-		if (isValidArcLine(rblock.x1, rblock.y2, poly[poly.length - 1].x, poly[poly.length - 1].y, rblock)) {
-			poly[poly.length - 1].line = true;
-		}
+		// if (isValidArcLine(rblock.x1, rblock.y2, poly[poly.length - 1].x, poly[poly.length - 1].y, rblock)) {
+		// 	poly[poly.length - 1].line = true;
+		// }
 
 		poly.push(getShortestLine(center.x, center.y, rblock.x2, rblock.y1));
-		if (isValidArcLine(rblock.x2, rblock.y1, poly[poly.length - 1].x, poly[poly.length - 1].y, rblock)) {
-			poly[poly.length - 1].line = true;
-		}
+		// if (isValidArcLine(rblock.x2, rblock.y1, poly[poly.length - 1].x, poly[poly.length - 1].y, rblock)) {
+		// 	poly[poly.length - 1].line = true;
+		// }
 
 		poly.push(getShortestLine(center.x, center.y, rblock.x2, rblock.y2));
-		if (isValidArcLine(rblock.x2, rblock.y2, poly[poly.length - 1].x, poly[poly.length - 1].y, rblock)) {
-			poly[poly.length - 1].line = true;
-		}
+		// if (isValidArcLine(rblock.x2, rblock.y2, poly[poly.length - 1].x, poly[poly.length - 1].y, rblock)) {
+		// 	poly[poly.length - 1].line = true;
+		// }
 
 	}
 	poly.sort(crossCompare);
 
 	// console.log("hi");
+	// 	//TODO: Convert to line instead of segment
+
 	// for (var iPoly in poly) {
 	// 	console.log(poly[iPoly]);
 	// }
@@ -547,6 +554,7 @@ function drawFog() {
 		polyFog.clear();
 		polyFog.lineStyle(0, 0x000000, 1);
 		polyFog.beginFill(0x0000FF);
+		polyFog.z = constant.FOG_DEPTH;
 		for (var iPoly = 0; iPoly < poly.length; iPoly++) {
 		// for (var iPoly in poly) {
 			// points.push(new PIXI.Point(poly[iPoly].x, poly[iPoly].y));
@@ -554,13 +562,17 @@ function drawFog() {
 				var p1 = getPointOnCircle(poly[iPoly].x, poly[iPoly].y);
 				var p2 = getPointOnCircle(poly[(iPoly + 1) % poly.length].x, poly[(iPoly + 1) % poly.length].y);
 
-				polyFog.moveTo(center.x, center.y);
-				polyFog.lineTo(p1.x, p1.y);
-				// polyFog.arc(center.x, center.y, 100, getRelativeAngle(poly[iPoly]), getRelativeAngle(poly[(iPoly + 1) % poly.length]));
-				// polyFog.arcTo(p1.x, p1.y, p2.x, p2.y, constant.FOG_RANGE);
+				// polyFog.moveTo(center.x, center.y);
+				// polyFog.lineTo(p1.x, p1.y);
+				// console.log(getRelativeAngle(poly[iPoly].x, poly[iPoly].y));
+				// console.log(getRelativeAngle(poly[(iPoly + 1) % poly.length].x, poly[(iPoly + 1) % poly.length].y));
+				polyFog.arc(center.x, center.y, constant.FOG_RANGE, getRelativeAngle(poly[iPoly].x, poly[iPoly].y), getRelativeAngle(poly[(iPoly + 1) % poly.length].x, poly[(iPoly + 1) % poly.length].y), true);
+				// polyFog.arc(center.x, center.y, constant.FOG_RANGE / 2, getRelativeAngle(poly[(iPoly + 1) % poly.length].x, poly[(iPoly + 1) % poly.length].y), getRelativeAngle(poly[iPoly].x, poly[iPoly].y), true);
+				// polyFog.arcTo((p1.x + p2.x) / 2, (p1.y + p2.y) / 2, p2.x, p2.y, constant.FOG_RANGE);
 				// polyFog.lineTo(poly[(iPoly + 1) % poly.length].x, poly[(iPoly + 1) % poly.length].y);
-				polyFog.lineTo(p2.x, p2.y);
-				polyFog.lineTo(center.x, center.y);
+				// polyFog.lineTo(p2.x, p2.y);
+				// polyFog.lineTo(center.x, center.y);
+				// polyFog.moveTo(center.x, center.y);
 			} else {
 				polyFog.moveTo(center.x, center.y);
 				polyFog.lineTo(poly[iPoly].x, poly[iPoly].y);
@@ -660,7 +672,7 @@ function setupGraphic() {
     background = drawRectangle(0, 0, screenWidth, screenHeight, 0x000000, 0, masterStage);
 
     // graphicStage.addChild(fog);
-    graphicStage.mask = polyFog;
+    // graphicStage.mask = polyFog;
     graphicStage.filters = [new PIXI.FogFilter()];
 
     masterStage.addChild(graphicStage);
