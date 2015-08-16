@@ -38,8 +38,8 @@ var Block = function(x, y) {
 	this.y = y;
 }
 
-exports.Player = function (id, x, y, socket) {
-	return new Player(id, x, y, socket);
+exports.Player = function (id, x, y, health, socket) {
+	return new Player(id, x, y, health, socket);
 }
 
 exports.Bullet = function (id, stime, x1, y1, dx, dy) {

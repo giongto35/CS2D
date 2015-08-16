@@ -244,12 +244,14 @@ socketServer.on('connection', function connection(socket) {
 
 	socket.on('close', function () {
 		LOG('INFO: ' + player.id + ' disconnected');
+		console.log(players);
 		players.splice(findIndex(players, player.id), 1);
 		socketServer.sendOther(socket, coding.encrypt({
 			command: constant.COMMAND_TYPE.DESTROY,
 			id: player.id
 		}));
 		LOG('INFO: Sent DESTROY package to all sockets except socket ' + player.id);
+		console.log(players);
 	});
 
 	// socket.on('ping', function () {
@@ -290,12 +292,21 @@ function gameLoop() {
 		for (var iBullet in bullets) {
 			var bullet = bullets[iBullet];
 			if (bullet.playerId != player.id && checkHit(bullet, player)) {
-				// players.splice(iPlayer, 1);
-				player.socket.send(coding.encrypt({
-					command: constant.COMMAND_TYPE.DESTROY,
-					id: player.id
+				player.health -= 20; // amount of HP will be calculated based on the distance with the center
+				socketServer.broadcast(coding.encrypt({
+					command: constant.COMMAND_TYPE.HPCHANGE,
+					id: player.id,
+					health: player.health
 				}));
-				break;
+				if (player.health <= 0) {
+					// players.splice(iPlayer, 1);
+					player.socket.send(coding.encrypt({
+						command: constant.COMMAND_TYPE.DESTROY,
+						id: player.id
+					}));		
+					console.log(players);
+					break;
+				}
 			}
 		}
 	}	
@@ -315,7 +326,7 @@ function gameLoop() {
 				{x1: block.x, y1: block.y, x2: block.x + constant.BLOCK_SIZE, y2: block.y + constant.BLOCK_SIZE})) {
 				console.log("HIT BLOCK");
 				bullets.splice(i, 1);
-				continue;
+				break;
 			}
 		}
 	}

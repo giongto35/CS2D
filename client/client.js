@@ -114,6 +114,12 @@ function updatePosition(player, data) {
 	}
 }
 
+function updateHP(data) {
+	var player = players[findIndex(players, data.id)]; 
+	console.log(data.health);
+	player.health = data.health;
+}
+
 function initPlayer(data) {
 	var tempPlayer = new Player(data.id, data.x, data.y, data.health, data.main === 1);
 	if (data.main == 1) {
@@ -182,6 +188,7 @@ function movePlayer(player, d) {
 }
 
 function removePlayer(data) {
+	console.log("destroy");
 	if (data.id == player.id) {
 		player.destroy();
 		running = false;
@@ -368,7 +375,7 @@ function drawPlayer(centerX, centerY, mainChar) {
 	var playerGraphic = new PIXI.Container();
 	var color = mainChar === true ? constant.PLAYER_CONFIG.DEFAULT_COLOR : constant.ENEMY_CONFIG.DEFAULT_COLOR;
 	var body = drawCircle(0, 0, constant.PLAYER_CONFIG.DEFAULT_SIZE, color, constant.PLAYER_DEPTH);
-	var healthBar = drawRectangle(-50, -35, 100, 10, 0xFF0000, constant.PLAYER_DEPTH);
+	var healthBar = drawRectangle(-50, -35, 100, 10, 0xFF0000, 0, constant.PLAYER_DEPTH);
 	healthBar.healthBar = true; //set this Flag for futher tracing
 	playerGraphic.addChild(body);
 	playerGraphic.addChild(healthBar);
@@ -390,9 +397,13 @@ function drawCircle(centerX, centerY, radius, color, depth) {
 	return circle;
 }
 
-function drawRectangle(x1, y1, w, h, color, depth, container) {
+function drawRectangle(x1, y1, w, h, color, depth, border, container) {
 	var rect = new PIXI.Graphics();
-	rect.lineStyle(2, 0x000100, 1);
+	if (border === undefined)
+		rect.lineStyle(2, 0x000100, 1);
+	else
+		rect.lineStyle(0, 0x000100, 1);
+
 	rect.beginFill(color);
 	rect.drawRect(x1, y1, w, h);
 	rect.z = depth;
@@ -445,7 +456,7 @@ function intersect(x1, y1, x2, y2, x3, y3, x4, y4) {
 	}
 }
 
-
+//TODO: some line is shortened, need to be lengthen
 function getShortestLine(x1, y1, x2, y2) {
 	var p = getPointOnCircle(x2, y2);
 	var nearestPoint = {x: p.x, y: p.y};
@@ -562,11 +573,11 @@ function drawFog() {
 				var p1 = getPointOnCircle(poly[iPoly].x, poly[iPoly].y);
 				var p2 = getPointOnCircle(poly[(iPoly + 1) % poly.length].x, poly[(iPoly + 1) % poly.length].y);
 
-				// polyFog.moveTo(center.x, center.y);
+				polyFog.moveTo(center.x, center.y);
 				// polyFog.lineTo(p1.x, p1.y);
 				// console.log(getRelativeAngle(poly[iPoly].x, poly[iPoly].y));
 				// console.log(getRelativeAngle(poly[(iPoly + 1) % poly.length].x, poly[(iPoly + 1) % poly.length].y));
-				polyFog.arc(center.x, center.y, constant.FOG_RANGE, getRelativeAngle(poly[iPoly].x, poly[iPoly].y), getRelativeAngle(poly[(iPoly + 1) % poly.length].x, poly[(iPoly + 1) % poly.length].y), true);
+				polyFog.arc(center.x, center.y, constant.FOG_RANGE, getRelativeAngle(poly[(iPoly + 1) % poly.length].x, poly[(iPoly + 1) % poly.length].y), getRelativeAngle(poly[iPoly].x, poly[iPoly].y), false);
 				// polyFog.arc(center.x, center.y, constant.FOG_RANGE / 2, getRelativeAngle(poly[(iPoly + 1) % poly.length].x, poly[(iPoly + 1) % poly.length].y), getRelativeAngle(poly[iPoly].x, poly[iPoly].y), true);
 				// polyFog.arcTo((p1.x + p2.x) / 2, (p1.y + p2.y) / 2, p2.x, p2.y, constant.FOG_RANGE);
 				// polyFog.lineTo(poly[(iPoly + 1) % poly.length].x, poly[(iPoly + 1) % poly.length].y);
@@ -585,7 +596,6 @@ function drawFog() {
 				var rblock = {x1: toRelativeX(blocks[iBlock].x), y1: toRelativeY(blocks[iBlock].y), x2: toRelativeX(blocks[iBlock].x)  + constant.BLOCK_SIZE, y2: toRelativeY(blocks[iBlock].y + constant.BLOCK_SIZE)};
 				polyFog.drawRect(rblock.x1, rblock.y1, constant.BLOCK_SIZE, constant.BLOCK_SIZE);
 			}
-		polyFog.endFill();
 		graphicStage.addChild(polyFog);
 	}
 }
@@ -613,6 +623,9 @@ function setupSocket(socket) {
 				break;
 			case constant.COMMAND_TYPE.UPDATE:
 				updatePosition(player, data);
+				break;
+			case constant.COMMAND_TYPE.HPCHANGE:
+				updateHP(data);
 				break;
 			case constant.COMMAND_TYPE.DESTROY:
 				removePlayer(data);
@@ -709,7 +722,7 @@ class GraphicObject {
 				break;
 			}
 		}
-		this.graphic.clear();
+		// this.graphic.clear();
 		delete this.graphic;
 		graphicStage.removeChild(this.graphic);		
 	}
