@@ -101,7 +101,6 @@ function updatePosition(player, data) {
 	//update player, check snapshot
 	if (data.id == player.id) {
 		var pos = playerSnapshot.shift();
-		console.log(data);
 		if (pos !== undefined && !(pos.x == data.x && pos.y == data.y)) {
 			player.x = data.x;
 			player.y = data.y;
@@ -116,7 +115,6 @@ function updatePosition(player, data) {
 
 function updateHP(data) {
 	var player = players[findIndex(players, data.id)]; 
-	console.log(data.health);
 	player.health = data.health;
 }
 
@@ -188,7 +186,6 @@ function movePlayer(player, d) {
 }
 
 function removePlayer(data) {
-	console.log("destroy");
 	if (data.id == player.id) {
 		player.destroy();
 		running = false;
@@ -291,7 +288,8 @@ function updateGameState() {
 		}
 	}
 
-	drawFog();
+	// drawFog();
+	// drawSimpleFog();
 }
 
 function gameLoop() {
@@ -375,7 +373,7 @@ function drawPlayer(centerX, centerY, mainChar) {
 	var playerGraphic = new PIXI.Container();
 	var color = mainChar === true ? constant.PLAYER_CONFIG.DEFAULT_COLOR : constant.ENEMY_CONFIG.DEFAULT_COLOR;
 	var body = drawCircle(0, 0, constant.PLAYER_CONFIG.DEFAULT_SIZE, color, constant.PLAYER_DEPTH);
-	var healthBar = drawRectangle(-50, -35, 100, 10, 0xFF0000, 0, constant.PLAYER_DEPTH);
+	var healthBar = drawRectangle(-50, -35, 100, 10, 0xFF0000, false, constant.PLAYER_DEPTH);
 	healthBar.healthBar = true; //set this Flag for futher tracing
 	playerGraphic.addChild(body);
 	playerGraphic.addChild(healthBar);
@@ -397,9 +395,9 @@ function drawCircle(centerX, centerY, radius, color, depth) {
 	return circle;
 }
 
-function drawRectangle(x1, y1, w, h, color, depth, border, container) {
+function drawRectangle(x1, y1, w, h, color, border, depth, container) {
 	var rect = new PIXI.Graphics();
-	if (border === undefined)
+	if (border === true)
 		rect.lineStyle(2, 0x000100, 1);
 	else
 		rect.lineStyle(0, 0x000100, 1);
@@ -462,7 +460,6 @@ function getShortestLine(x1, y1, x2, y2) {
 	var nearestPoint = {x: p.x, y: p.y};
 	for (var iBlock in blocks) {
 		var rblock = {x1: toRelativeX(blocks[iBlock].x), y1: toRelativeY(blocks[iBlock].y), x2: toRelativeX(blocks[iBlock].x)  + constant.BLOCK_SIZE, y2: toRelativeY(blocks[iBlock].y + constant.BLOCK_SIZE)};
-		
 		var point = intersect(x1, y1, x2, y2, rblock.x1, rblock.y1, rblock.x2, rblock.y1);
 		if (point.x !== -1 && point.y !== -1) {
 			if (dist(center.x, center.y, point.x, point.y) < dist(center.x, center.y, nearestPoint.x, nearestPoint.y)) {
@@ -519,6 +516,60 @@ function isValidArcLine(x, y, px, py, rect) {
 
 function getRelativeAngle(x, y) {
 	return Math.atan2(y - center.y, x - center.x);
+}
+
+function isLineBlocked(x, y) {
+	for (var iBlock in blocks) {
+		var rblock = {x1: toRelativeX(blocks[iBlock].x), y1: toRelativeY(blocks[iBlock].y), x2: toRelativeX(blocks[iBlock].x) + constant.BLOCK_SIZE, y2: toRelativeY(blocks[iBlock].y + constant.BLOCK_SIZE)};
+		var point = intersect(center.x, center.y, x, y, rblock.x1, rblock.y1, rblock.x2, rblock.y1);
+		if (point.x !== -1 && point.y !== -1) {
+			return true;
+		}
+		point = intersect(center.x, center.y, x, y, rblock.x1, rblock.y1, rblock.x1, rblock.y2);
+		if (point.x !== -1 && point.y !== -1) {
+			return true;
+		}
+		point = intersect(center.x, center.y, x, y, rblock.x2, rblock.y1, rblock.x2, rblock.y2);
+		if (point.x !== -1 && point.y !== -1) {
+			return true;
+		}
+		point = intersect(center.x, center.y, x, y, rblock.x1, rblock.y2, rblock.x2, rblock.y2);
+		if (point.x !== -1 && point.y !== -1) {
+			return true;
+		}
+	}
+	return false;	
+}
+
+function drawSimpleFog() {
+	polyFog.clear();
+	polyFog.lineStyle(0, 0x000000, 1);
+	polyFog.beginFill(0x0000FF);
+	polyFog.alpha = 0.5;
+	polyFog.z = constant.FOG_DEPTH;
+	for (var i = -1; i <= screenHeight / constant.FOG_BLOCK_SIZE + 1; i++) {
+		for (var j = -1; j <= screenWidth / constant.FOG_BLOCK_SIZE + 1; j++) {
+			var x = toRelativeX(Math.trunc(toAbsoluteX(j * constant.FOG_BLOCK_SIZE) / constant.FOG_BLOCK_SIZE) * constant.FOG_BLOCK_SIZE);
+			var y = toRelativeY(Math.trunc(toAbsoluteY(i * constant.FOG_BLOCK_SIZE) / constant.FOG_BLOCK_SIZE) * constant.FOG_BLOCK_SIZE);
+			if (!isLineBlocked(x + constant.FOG_BLOCK_SIZE / 2, y + constant.FOG_BLOCK_SIZE / 2)) {
+				polyFog.drawRect(x, y, constant.FOG_BLOCK_SIZE, constant.FOG_BLOCK_SIZE);
+				var yblock = Math.trunc(toAbsoluteY(y) / constant.BLOCK_SIZE);
+				var xblock = Math.trunc(toAbsoluteX(x) / constant.BLOCK_SIZE);
+				for (var u = -1; u <= 1; u++)
+					for (var v = -1; v <= 1; v++) {
+					if (yblock + u >= 0 && xblock + v >= 0 && tiles[yblock + u][xblock + v] === true) {
+						polyFog.drawRect(toRelativeX((xblock + v) * constant.BLOCK_SIZE), toRelativeY((yblock + u) * constant.BLOCK_SIZE), constant.BLOCK_SIZE, constant.BLOCK_SIZE);
+					}
+				}
+			}
+		}
+	}
+
+	// for (var iBlock in blocks) {
+	// 	var rblock = {x1: toRelativeX(blocks[iBlock].x), y1: toRelativeY(blocks[iBlock].y), x2: toRelativeX(blocks[iBlock].x)  + constant.BLOCK_SIZE, y2: toRelativeY(blocks[iBlock].y + constant.BLOCK_SIZE)};
+	// 	polyFog.drawRect(rblock.x1, rblock.y1, constant.BLOCK_SIZE, constant.BLOCK_SIZE);
+	// }
+	graphicStage.addChild(polyFog);
 }
 
 function drawFog() {
@@ -682,10 +733,10 @@ function setupGraphic() {
     
     // fogMask = drawCircle(screenWidth / 2, screenHeight / 2, constant.FOG_RANGE, 0x000000, 0);
     // fog = drawCircle(screenWidth / 2, screenHeight / 2, constant.FOG_RANGE, 0xFFFFFF, 0);
-    background = drawRectangle(0, 0, screenWidth, screenHeight, 0x000000, 0, masterStage);
+    background = drawRectangle(0, 0, screenWidth, screenHeight, 0x000000, false, 0, masterStage);
 
     // graphicStage.addChild(fog);
-    // graphicStage.mask = polyFog;
+    graphicStage.mask = polyFog;
     graphicStage.filters = [new PIXI.FogFilter()];
 
     masterStage.addChild(graphicStage);
@@ -722,7 +773,7 @@ class GraphicObject {
 				break;
 			}
 		}
-		// this.graphic.clear();
+		this.graphic.clear();
 		delete this.graphic;
 		graphicStage.removeChild(this.graphic);		
 	}
@@ -766,7 +817,6 @@ class Bullet extends GraphicObject {
 		this.dx = dx;
 		this.dy = dy;
 		this.stime = stime;
-		// this.dust = [];
 	}
 
 	invalid() {
@@ -788,7 +838,7 @@ class Bullet extends GraphicObject {
 		var cur = Date.now() % 100000;
 		if (cur > this.stime) {
 			if (this.graphic.alpha == 0) {
-				this.graphic.alpha = 100;
+				this.graphic.alpha = 1;
 			}
 			this.x = this.sx + this.dx * (cur - this.stime);
 			this.y = this.sy + this.dy * (cur - this.stime);
@@ -802,7 +852,7 @@ class Block extends GraphicObject {
 		super(-1, x, y);
 		this.x = x; //Math.trunc(x / constant.BLOCK_SIZE) * constant.BLOCK_SIZE;
 		this.y = y; //Math.trunc(y / constant.BLOCK_SIZE) * constant.BLOCK_SIZE;
-		this.graphic = drawRectangle(0, 0, constant.BLOCK_SIZE, constant.BLOCK_SIZE, 0x00FFFF, constant.BLOCK_DEPTH);
+		this.graphic = drawRectangle(0, 0, constant.BLOCK_SIZE, constant.BLOCK_SIZE, 0x00FFFF, true, constant.BLOCK_DEPTH);
 
 		// // var renderTexture = new PIXI.RenderTexture(constant.BLOCK_SIZE, constant.BLOCK_SIZE);
 		// // renderTexture.render(graphic);
@@ -816,36 +866,12 @@ class Block extends GraphicObject {
 	}
 }
 
-
-class Dust extends GraphicObject{
-	constructor (x, y) {
-		super(-1, x, y);
-		this.graphic = drawCircle(0, 0, 2, 0x00FFFF, constant.BULLET_DEPTH);
-		this.graphic.rotation = Math.random() * 360;
-		
-		this.x = x;
-		this.y = y;
-		// this.graphic.anchor.x = 0.5;
-		// this.graphic.anchor.y = 0.5;
-		this.graphic.alpha = 0.5;
-	}	
-
-	update() {
-		this.graphic.alpha -= 0.03;
-		if(this.graphic.alpha <= 0){
-			graphicStage.removeChild(this.graphic);					
-			return true;
-		}
-		return false;		
-	}
-}
-
 class Map extends GraphicObject {
 	constructor (x1, y1, x2, y2) {
 		super(-1, x1, y1);
 		this.x = x1;
 		this.y = y1;
-		this.graphic = drawRectangle(x1, y1, x2, y2, 0xFFFFFF, constant.MAP_DEPTH);
+		this.graphic = drawRectangle(x1, y1, x2, y2, 0xFFFFFF, false, constant.MAP_DEPTH);
 	}
 }
 
