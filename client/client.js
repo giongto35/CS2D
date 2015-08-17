@@ -773,7 +773,15 @@ class GraphicObject {
 				break;
 			}
 		}
-		this.graphic.clear();
+		console.log(typeof this.graphic);
+		if (this.graphic.children.length == 0) {
+			this.graphic.clear();
+		}
+		else {
+			for (var iChildren in this.graphic.children) {
+				this.graphic.children[iChildren].clear();
+			}
+		}
 		delete this.graphic;
 		graphicStage.removeChild(this.graphic);		
 	}
