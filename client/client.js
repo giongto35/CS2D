@@ -112,6 +112,7 @@ function updatePosition(player, data) {
 	//update player, check snapshot
 	if (data.id == player.id) {
 		var idx = findIndexByValue(playerSnapshot, {x: data.x, y: data.y}); //the package order can be messed up
+		console.log(playerSnapshot);
 		if (idx == -1) {
 			player.x = data.x;
 			player.y = data.y;
