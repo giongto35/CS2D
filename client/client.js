@@ -33,6 +33,7 @@ var fog = null;
 var background = null;
 var polyFog = new PIXI.Graphics();
 var center = {x: screenWidth / 2, y: screenHeight / 2};
+var curReceivedTime = 0;
 
 window.onload = function() {
 	window.addEventListener('keydown', function (e) {
@@ -101,6 +102,12 @@ function updatePosition(player, data) {
 	//update player, check snapshot
 	if (data.id == player.id) {
 		var pos = playerSnapshot.shift();
+		if (pos.time < curReceivedTime) {
+			continue;
+		}
+		
+		curReceivedTime = pos.time;
+
 		if (pos !== undefined && !(pos.x == data.x && pos.y == data.y)) {
 			player.x = data.x;
 			player.y = data.y;
@@ -182,7 +189,7 @@ function movePlayer(player, d) {
 			return;
 		}
 	}
-	playerSnapshot.push({x: player.x, y: player.y});
+	playerSnapshot.push({time: Date.now(), x: player.x, y: player.y});
 }
 
 function removePlayer(data) {
