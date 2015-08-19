@@ -98,19 +98,25 @@ function findIndex(arr, id) {
     return -1;
 }
 
+function findIndexByValue(arr, val) {
+    var len = arr.length;
+    while (len--) {
+        if (arr[len].x == val.x && arr[len].y == val.y) {
+            return len;
+        }
+    }
+    return -1;
+}
+
 function updatePosition(player, data) {
 	//update player, check snapshot
 	if (data.id == player.id) {
-		var pos = playerSnapshot.shift();
-		if (pos.time < curReceivedTime) {
-			continue;
-		}
-		
-		curReceivedTime = pos.time;
-
-		if (pos !== undefined && !(pos.x == data.x && pos.y == data.y)) {
+		var idx = findIndexByValue(playerSnapshot, {x: data.x, y: data.y}); //the package order can be messed up
+		if (idx == -1) {
 			player.x = data.x;
 			player.y = data.y;
+		} else {
+			playerSnapshot.splice(idx, 1);
 		}
 	} else {
 		//update other players
@@ -189,7 +195,7 @@ function movePlayer(player, d) {
 			return;
 		}
 	}
-	playerSnapshot.push({time: Date.now(), x: player.x, y: player.y});
+	playerSnapshot.push({x: player.x, y: player.y});
 }
 
 function removePlayer(data) {
@@ -674,7 +680,7 @@ function setupSocket(socket) {
 
 	socket.onmessage = function (event) {
 		var data = coding.decrypt(event.data);
-		console.log(data);
+		// console.log(data);
 		switch (data.command) {
 			case constant.COMMAND_TYPE.INIT:
 				initPlayer(data);
@@ -780,7 +786,6 @@ class GraphicObject {
 				break;
 			}
 		}
-		console.log(typeof this.graphic);
 		if (this.graphic.children.length == 0) {
 			this.graphic.clear();
 		}
