@@ -52,14 +52,18 @@ function setupGameObject() {
 	}
 }
 
+function inField(x, y, size) {
+	return x >= size && 
+		x <= constant.GAME_WIDTH - size &&
+		y >= size &&
+		y <= constant.GAME_HEIGHT - size
+}
+
 function movePlayer(player, d) {
 	player.x += constant.DIR[d].x * constant.PLAYER_CONFIG.SPEED;
 	player.y += constant.DIR[d].y * constant.PLAYER_CONFIG.SPEED;
 
-	if (player.x < constant.PLAYER_CONFIG.DEFAULT_SIZE || 
-		player.x > constant.GAME_WIDTH - constant.PLAYER_CONFIG.DEFAULT_SIZE || 
-		player.y < constant.PLAYER_CONFIG.DEFAULT_SIZE || 
-		player.y > constant.GAME_HEIGHT - constant.PLAYER_CONFIG.DEFAULT_SIZE) {
+	if (!inField(player.x, player.y, constant.PLAYER_CONFIG.DEFAULT_SIZE)) {
 		player.x -= constant.DIR[d].x * constant.PLAYER_CONFIG.SPEED;
 		player.y -= constant.DIR[d].y * constant.PLAYER_CONFIG.SPEED;
 		return;

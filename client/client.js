@@ -175,6 +175,7 @@ function movePlayer(player, d) {
 	if (!inField(player.x, player.y, constant.PLAYER_CONFIG.DEFAULT_SIZE)) {
 		player.x -= constant.DIR[d].x * constant.PLAYER_CONFIG.SPEED;
 		player.y -= constant.DIR[d].y * constant.PLAYER_CONFIG.SPEED;
+		playerSnapshot.push({x: player.x, y: player.y});
 		return;
 	}
 
@@ -182,6 +183,7 @@ function movePlayer(player, d) {
 		if (players[iPlayer] !== player && checkCollision(player, players[iPlayer], 2 * constant.PLAYER_CONFIG.DEFAULT_SIZE)) {
 			player.x -= constant.DIR[d].x * constant.PLAYER_CONFIG.SPEED;
 			player.y -= constant.DIR[d].y * constant.PLAYER_CONFIG.SPEED;
+			playerSnapshot.push({x: player.x, y: player.y});
 			return;
 		}
 	}
@@ -193,6 +195,7 @@ function movePlayer(player, d) {
 			{x1: block.x, y1: block.y, x2: block.x + constant.BLOCK_SIZE, y2: block.y + constant.BLOCK_SIZE})) {
 			player.x -= constant.DIR[d].x * constant.PLAYER_CONFIG.SPEED;
 			player.y -= constant.DIR[d].y * constant.PLAYER_CONFIG.SPEED;
+			playerSnapshot.push({x: player.x, y: player.y});
 			return;
 		}
 	}
