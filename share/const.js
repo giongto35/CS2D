@@ -53,6 +53,7 @@
 	exports.BUILD_LIM = 200;
 	exports.FOG_RANGE = 500;
 	exports.FOG_BLOCK_SIZE = 30;
+	exports.EPS = 0.0001;
 
 	//Depth
 	exports.MAP_DEPTH = 1;

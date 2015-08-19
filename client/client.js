@@ -305,7 +305,7 @@ function updateGameState() {
 		}
 	}
 
-	// drawFog();
+	drawFog();
 	// drawSimpleFog();
 }
 
@@ -390,7 +390,7 @@ function drawPlayer(centerX, centerY, mainChar) {
 	var playerGraphic = new PIXI.Container();
 	var color = mainChar === true ? constant.PLAYER_CONFIG.DEFAULT_COLOR : constant.ENEMY_CONFIG.DEFAULT_COLOR;
 	var body = drawCircle(0, 0, constant.PLAYER_CONFIG.DEFAULT_SIZE, color, constant.PLAYER_DEPTH);
-	var healthBar = drawRectangle(-50, -35, 100, 10, 0xFF0000, false, constant.PLAYER_DEPTH);
+	var healthBar = drawRectangle(-50, -35, 100, 10, 0xFF0000, false, constant.PLAYER_DEPTH, masterStage);
 	healthBar.healthBar = true; //set this Flag for futher tracing
 	playerGraphic.addChild(body);
 	playerGraphic.addChild(healthBar);
@@ -445,7 +445,7 @@ function drawPolygon(poly) {
 }
 
 function isOnSegment(x, y, x1, y1, x2, y2) {
-	return x >= Math.min(x1, x2) && x <= Math.max(x1, x2) && y >= Math.min(y1, y2) && y <= Math.max(y1, y2);
+	return x >= Math.min(x1, x2) - constant.EPS && x <= Math.max(x1, x2) + constant.EPS && y >= Math.min(y1, y2) - constant.EPS && y <= Math.max(y1, y2) + constant.EPS ;
 }
 
 function intersect(x1, y1, x2, y2, x3, y3, x4, y4) {
@@ -474,7 +474,9 @@ function intersect(x1, y1, x2, y2, x3, y3, x4, y4) {
 //TODO: some line is shortened, need to be lengthen
 function getShortestLine(x1, y1, x2, y2) {
 	var p = getPointOnCircle(x2, y2);
-	var nearestPoint = {x: p.x, y: p.y};
+	x2 = p.x;
+	y2 = p.y;
+	var nearestPoint = {x: x2, y: y2};
 	for (var iBlock in blocks) {
 		var rblock = {x1: toRelativeX(blocks[iBlock].x), y1: toRelativeY(blocks[iBlock].y), x2: toRelativeX(blocks[iBlock].x)  + constant.BLOCK_SIZE, y2: toRelativeY(blocks[iBlock].y + constant.BLOCK_SIZE)};
 		var point = intersect(x1, y1, x2, y2, rblock.x1, rblock.y1, rblock.x2, rblock.y1);
@@ -516,15 +518,15 @@ function crossCompare(point1, point2) {
 }
 
 function getPointOnCircle(x, y) {
-	return {x: center.x + (x - center.x) / dist(center.x, center.y, x, y) * constant.FOG_RANGE, y: center.y + (y - center.y) / dist(center.x, center.y, x, y) * constant.FOG_RANGE};
+	return {x: center.x + (x - center.x) / dist(center.x, center.y, x, y) * constant.FOG_RANGE * 2, y: center.y + (y - center.y) / dist(center.x, center.y, x, y) * constant.FOG_RANGE * 2};
 }
 
 function isLine(x, y) {
 	x = x + (x - center.x) / dist(center.x, center.y, x, y) * 0.01;
 	y = y + (y - center.y) / dist(center.x, center.y, x, y) * 0.01;
-	var yblock = Math.trunc(toAbsoluteY(y) / constant.BLOCK_SIZE);
 	var xblock = Math.trunc(toAbsoluteX(x) / constant.BLOCK_SIZE);
-	return (tiles[yblock][xblock] !== true);
+	var yblock = Math.trunc(toAbsoluteY(y) / constant.BLOCK_SIZE);
+	return (yblock < 0 || xblock < 0 || tiles[yblock][xblock] !== true);
 }
 
 function isValidArcLine(x, y, px, py, rect) {
@@ -618,6 +620,14 @@ function drawFog() {
 		// }
 
 	}
+
+	for (var i = 0; i < 16; i++) {
+		poly.push(getShortestLine(center.x, center.y, center.x + Math.cos(2 * Math.PI * i / 16), center.y + Math.sin(2 * Math.PI * i / 16)));
+		console.log(poly[poly.length - 1]);
+	}
+
+	console.log(poly);
+
 	poly.sort(crossCompare);
 
 	// console.log("hi");
@@ -642,15 +652,15 @@ function drawFog() {
 				var p2 = getPointOnCircle(poly[(iPoly + 1) % poly.length].x, poly[(iPoly + 1) % poly.length].y);
 
 				polyFog.moveTo(center.x, center.y);
-				// polyFog.lineTo(p1.x, p1.y);
+				polyFog.lineTo(p1.x, p1.y);
 				// console.log(getRelativeAngle(poly[iPoly].x, poly[iPoly].y));
 				// console.log(getRelativeAngle(poly[(iPoly + 1) % poly.length].x, poly[(iPoly + 1) % poly.length].y));
-				polyFog.arc(center.x, center.y, constant.FOG_RANGE, getRelativeAngle(poly[(iPoly + 1) % poly.length].x, poly[(iPoly + 1) % poly.length].y), getRelativeAngle(poly[iPoly].x, poly[iPoly].y), false);
+				// polyFog.arc(center.x, center.y, constant.FOG_RANGE, getRelativeAngle(poly[(iPoly + 1) % poly.length].x, poly[(iPoly + 1) % poly.length].y), getRelativeAngle(poly[iPoly].x, poly[iPoly].y), false);
 				// polyFog.arc(center.x, center.y, constant.FOG_RANGE / 2, getRelativeAngle(poly[(iPoly + 1) % poly.length].x, poly[(iPoly + 1) % poly.length].y), getRelativeAngle(poly[iPoly].x, poly[iPoly].y), true);
 				// polyFog.arcTo((p1.x + p2.x) / 2, (p1.y + p2.y) / 2, p2.x, p2.y, constant.FOG_RANGE);
 				// polyFog.lineTo(poly[(iPoly + 1) % poly.length].x, poly[(iPoly + 1) % poly.length].y);
-				// polyFog.lineTo(p2.x, p2.y);
-				// polyFog.lineTo(center.x, center.y);
+				polyFog.lineTo(p2.x, p2.y);
+				polyFog.lineTo(center.x, center.y);
 				// polyFog.moveTo(center.x, center.y);
 			} else {
 				polyFog.moveTo(center.x, center.y);
