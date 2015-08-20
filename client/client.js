@@ -17,15 +17,16 @@ var blocks = [];
 var gameObj = [];
 var player = {}; //create by new player
 var gameInput = {mouse: {down: false, x: 0, y: 0}, keyboard: {37: false, 38: false, 39: false, 40: false}};
+var option = {
+	fog: true
+};
 var players = [];
 var running = true;
-var pingText = {};
+var infoText;
 var fps = 60;
 var interval = 1000 / fps;
 var now;
-var then = Date.now();
-var pingTime = 0;
-var pingTimeLim = 10000;
+var pingText, fpsText;
 var playerSnapshot = [];
 var tiles = [[]];
 var fogMask = null;
@@ -34,6 +35,24 @@ var background = null;
 var polyFog = new PIXI.Graphics();
 var center = {x: screenWidth / 2, y: screenHeight / 2};
 var curReceivedTime = 0;
+var gameEvent = [];
+var fps = {
+	startTime : 0,
+	frameNumber : 0,
+	getFPS : function(){
+		this.frameNumber++;
+		var d = new Date().getTime(),
+			currentTime = ( d - this.startTime ) / 1000,
+			result = Math.floor( ( this.frameNumber / currentTime ) );
+
+		if( currentTime > 1 ){
+			this.startTime = new Date().getTime();
+			this.frameNumber = 0;
+		}
+		return result;
+
+	}	
+};
 
 window.onload = function() {
 	window.addEventListener('keydown', function (e) {
@@ -84,8 +103,14 @@ function shootBullet(data) {
 	bullets.push(new Bullet(data.stime, data.x1, data.y1, data.dx, data.dy));	
 }
 
-function showPing(data) {
-	pingText.text = 'Ping : ' + String(Date.now() % 100000 - data.stime);
+function calcPing(data) {
+	pingText = String(Date.now() % 100000 - data.stime);
+	infoText.text = 'Ping : ' + pingText + '\n' + 'FPS : ' + fpsText;
+}
+
+function calcFPS() {
+ 	fpsText = fps.getFPS();
+	infoText.text = 'Ping : ' + pingText + '\n' + 'FPS : ' + fpsText;
 }
 
 function findIndex(arr, id) {
@@ -112,7 +137,6 @@ function updatePosition(player, data) {
 	//update player, check snapshot
 	if (data.id == player.id) {
 		var idx = findIndexByValue(playerSnapshot, {x: data.x, y: data.y}); //the package order can be messed up
-		console.log(playerSnapshot);
 		if (idx == -1) {
 			player.x = data.x;
 			player.y = data.y;
@@ -276,11 +300,25 @@ function toAbsoluteY(y) {
 	return y + player.y - center.y;
 }
 
+function toggleFog() {
+	if (option.fog === true) {
+		option.fog = false;
+    	graphicStage.mask = null;		
+	} else {
+		option.fog = true;
+    	graphicStage.mask = polyFog;	
+	}
+}
+
 function updateGameState() {
 	//update by game input
 	for (var m in gameInput.keyboard) {
 		if (gameInput.keyboard[m]) {
-			processKeyboardEvent(player.id, m);
+			if (m == constant.KEY_F) {
+				toggleFog();
+			} else {
+				processKeyboardEvent(player.id, m);
+			}
 		}
 	}
 	if (gameInput.mouse.down) {
@@ -304,22 +342,22 @@ function updateGameState() {
 			obj.destroy();
 		}
 	}
-
-	drawFog();
+	if (option.fog == true) {
+		drawFog();
+	}
 	// drawSimpleFog();
 }
 
 function gameLoop() {
 	if (running) {
-    	updateGameState();
-    	if (Date.now() - pingTime > pingTimeLim) {
-    		sendPingEvent();
-    		pingTime = Date.now();
-    	}
+    	updateGameState();    	
 	}
     else {	
 
     }
+   	graphicStage.children.sort(depthCompare);
+   	masterStage.children.sort(depthCompare);
+    graphicRenderer.render(masterStage);
 }
 
 function depthCompare(a, b) {
@@ -332,16 +370,15 @@ function depthCompare(a, b) {
 
 function animate() {	
     requestAnimationFrame(animate);
-	now = Date.now();
-	var delta = now - then;	
-	//setup framerate
-	if (delta > interval) {
-	    gameLoop();
-	   	graphicStage.children.sort(depthCompare);
-	   	masterStage.children.sort(depthCompare);
-	    graphicRenderer.render(masterStage);
-	    then = now - (delta % interval);
-	}
+    for (var iEvent in gameEvent) {
+    	var now = Date.now();
+    	var delta = now - gameEvent[iEvent].then;
+    	if (delta > gameEvent[iEvent].interval) {
+	    	//do action of gameEvent[iEvent] after an interval
+    		gameEvent[iEvent].func();
+		    gameEvent[iEvent].then = now - (delta % gameEvent[iEvent].interval);
+    	}
+    }
 }
 
 PIXI.FogFilter = function() {
@@ -623,10 +660,7 @@ function drawFog() {
 
 	for (var i = 0; i < 16; i++) {
 		poly.push(getShortestLine(center.x, center.y, center.x + Math.cos(2 * Math.PI * i / 16), center.y + Math.sin(2 * Math.PI * i / 16)));
-		console.log(poly[poly.length - 1]);
 	}
-
-	console.log(poly);
 
 	poly.sort(crossCompare);
 
@@ -674,7 +708,7 @@ function drawFog() {
 				var rblock = {x1: toRelativeX(blocks[iBlock].x), y1: toRelativeY(blocks[iBlock].y), x2: toRelativeX(blocks[iBlock].x)  + constant.BLOCK_SIZE, y2: toRelativeY(blocks[iBlock].y + constant.BLOCK_SIZE)};
 				polyFog.drawRect(rblock.x1, rblock.y1, constant.BLOCK_SIZE, constant.BLOCK_SIZE);
 			}
-		graphicStage.addChild(polyFog);
+		// graphicStage.addChild(polyFog);
 	}
 }
 
@@ -712,7 +746,7 @@ function setupSocket(socket) {
 				shootBullet(data);
 				break;
 			case constant.COMMAND_TYPE.PING:
-				showPing(data);
+				calcPing(data);
 				break;
 			case constant.COMMAND_TYPE.MOUSEBUILD:
 				buildBlock(data);
@@ -723,7 +757,7 @@ function setupSocket(socket) {
 }
 
 function setupGUI() {
-	pingText = drawText(0, 0, "", constant.TEXT_DEPTH);
+	infoText = drawText(0, 0, "", constant.TEXT_DEPTH);
 }
 
 function setupMap() {
@@ -763,12 +797,21 @@ function setupGraphic() {
     background = drawRectangle(0, 0, screenWidth, screenHeight, 0x000000, false, 0, masterStage);
 
     // graphicStage.addChild(fog);
-    graphicStage.mask = polyFog;
     graphicStage.filters = [new PIXI.FogFilter()];
 
     masterStage.addChild(graphicStage);
     setupGUI();
     setupMap();
+}
+
+function addTimingEvent(func, fps) {
+	gameEvent.push({func: func, interval: 1000 / fps, then: Date.now()});
+}
+
+function setupEvent() {
+	addTimingEvent(gameLoop, 60);
+	addTimingEvent(sendPingEvent, 1);
+	addTimingEvent(calcFPS, 60);
 }
 
 class GraphicObject {
@@ -912,6 +955,7 @@ class Map extends GraphicObject {
 setupGraphic();
 setupGameObject();
 setupSocket(socket);
+setupEvent();
 requestAnimFrame(animate);
 //Graphic
 // animate();

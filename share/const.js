@@ -45,6 +45,7 @@
 	exports.KEY_S = 83;
 	exports.KEY_A = 65;
 	exports.KEY_D = 68;
+	exports.KEY_F = 70;
 	exports.KEY_P = 80;
 
 	// Misc config
