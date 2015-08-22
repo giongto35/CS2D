@@ -25,7 +25,6 @@ function LOG(message) {
 	console.log(message);
 }
 
-
 app.use(express.static(__dirname + '/../client'));
 
 app.get('/share/const.js', function(request, response) {
@@ -99,6 +98,16 @@ function findIndex(arr, id) {
     return -1;
 }
 
+function findIndexByAtr(arr, atr, val) {
+    var len = arr.length;
+    while (len--) {
+        if (arr[len][atr] === val) {
+            return len;
+        }
+    }
+    return -1;
+}
+
 function processInitEvent(socketServer, socket, data) {
 	//send current players
 	LOG('INFO: A player connected');
@@ -106,6 +115,7 @@ function processInitEvent(socketServer, socket, data) {
 
 	LOG('INFO: Sent INIT package for existing sockets');
 	var player = new gameObject.Player(curr_id++, data.name, 60, 60, 100, socket);
+	socket.playerId = player.id;
 	players.push(player);
 	
 	socket.send(coding.encrypt({
@@ -192,6 +202,7 @@ function sendCurrentState(socket) {
 		socket.send(coding.encrypt({
 			command: constant.COMMAND_TYPE.INIT,
 			id: player.id,
+			name: player.name,
 			x: player.x,
 			y: player.y,
 			health: player.health,
@@ -220,7 +231,6 @@ socketServer.sendOther = function sendOther(socket, data) {
 };
 
 socketServer.on('connection', function connection(socket) {
-
 	LOG('A socket connected');
 
   	socket.on('message', function (mess) {
@@ -257,15 +267,14 @@ socketServer.on('connection', function connection(socket) {
 
 
 	socket.on('close', function () {
+		var player = players[findIndex(players, socket.playerId)];
 		LOG('INFO: ' + player.id + ' disconnected');
-		console.log(players);
 		players.splice(findIndex(players, player.id), 1);
 		socketServer.sendOther(socket, coding.encrypt({
 			command: constant.COMMAND_TYPE.DESTROY,
 			id: player.id
 		}));
 		LOG('INFO: Sent DESTROY package to all sockets except socket ' + player.id);
-		console.log(players);
 	});
 
 	// socket.on('ping', function () {

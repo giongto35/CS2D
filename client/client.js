@@ -163,7 +163,8 @@
 	}
 
 	function initPlayer(data) {
-		var tempPlayer = new Player(data.id, data.x, data.y, data.health, data.main === 1);
+		console.log(data);
+		var tempPlayer = new Player(data.id, data.x, data.y, data.name, data.health, data.main === 1);
 		if (data.main == 1) {
 			player = tempPlayer;
 		} 
@@ -424,8 +425,8 @@
 	PIXI.FogFilter.prototype = Object.create(PIXI.AbstractFilter.prototype);
 	PIXI.FogFilter.prototype.constructor = PIXI.FogFilter;
 
-	function drawText(x, y, text, depth) {
-		var text = new PIXI.Text(text, {fill: 0x0033FF});
+	function drawText(x, y, text, style, depth) {
+		var text = new PIXI.Text(text, style);
 		masterStage.addChild(text);
 		text.position.x = x;
 		text.position.y = y;
@@ -438,9 +439,14 @@
 		var color = mainChar === true ? constant.PLAYER_CONFIG.DEFAULT_COLOR : constant.ENEMY_CONFIG.DEFAULT_COLOR;
 		var body = drawCircle(0, 0, constant.PLAYER_CONFIG.DEFAULT_SIZE, color, constant.PLAYER_DEPTH);
 		var healthBar = drawRectangle(-50, -35, 100, 10, 0xFF0000, false, constant.PLAYER_DEPTH, masterStage);
+		var nameTitle = drawText(0, 0, player.name, {fill: 0x0066FF}, constant.TEXT_DEPTH);
+		nameTitle.x = 0 - nameTitle.width / 2;
+		nameTitle.y = 0 - nameTitle.height / 2;
+
 		healthBar.healthBar = true; //set this Flag for futher tracing
 		playerGraphic.addChild(body);
 		playerGraphic.addChild(healthBar);
+		playerGraphic.addChild(nameTitle);
 
 		playerGraphic.z = constant.PLAYER_DEPTH;
 
@@ -772,7 +778,7 @@
 	}
 
 	function setupGUI() {
-		infoText = drawText(0, 0, "", constant.TEXT_DEPTH);
+		infoText = drawText(0, 0, "", {fill: 0x0033FF}, constant.TEXT_DEPTH);
 	}
 
 	function setupMap() {
@@ -887,7 +893,7 @@
 	}
 
 	class Player extends GraphicObject {
-		constructor (id, x, y, health, mainChar, reloadInterval) {
+		constructor (id, x, y, name, health, mainChar, reloadInterval) {
 			super(id, x, y);
 			// var color = mainChar === true ? constant.PLAYER_CONFIG.DEFAULT_COLOR : constant.ENEMY_CONFIG.DEFAULT_COLOR;
 			// this.graphic = drawCircle(0, 0, constant.PLAYER_CONFIG.DEFAULT_SIZE, color, constant.PLAYER_DEPTH);
@@ -900,6 +906,7 @@
 			this.reloadInterval = reloadInterval !== undefined ? reloadInterval : 100;
 			this.shotTime = -1000000;
 			this.health = health;
+			this.name = name;
 		}
 
 		updateGraphic() {
