@@ -32,6 +32,20 @@ if (typeof exports !== 'undefined') {
 	    return buffer;
 	}
 
+	DataView.prototype.getString8 = function(offset) {
+		var res = "";
+		for (var i = 0; i < 8; i+=1) {
+			res += String.fromCharCode(this.getInt16(offset + i * 2));
+		}
+		return res;
+	}
+
+	DataView.prototype.setString8 = function(offset, data) {
+		for (var i = 0; i < 8; i+=1) {
+			this.setInt16(offset + i * 2, data.charCodeAt(i));
+		}
+	}
+
 	exports.decrypt = function (ab) {
 		//keyboard
 		var res = {};
@@ -67,6 +81,9 @@ if (typeof exports !== 'undefined') {
 					res[m] = dv.getFloat32(offset);
 					offset += 4;
 					break;
+				case 'String8':
+					res[m] = dv.getString8(offset);
+					offset += 16;
 			}
 		}
 		return res;
@@ -91,6 +108,9 @@ if (typeof exports !== 'undefined') {
 					break;
 				case 'Float32':
 					cnt += 4;
+					break;
+				case 'String8':
+					cnt += 16;
 					break;
 			}		
 		}
@@ -119,6 +139,10 @@ if (typeof exports !== 'undefined') {
 				case 'Float32':
 					dv.setFloat32(offset, data[m]);
 					offset += 4;
+					break;
+				case 'String8':
+					dv.setString8(offset, data[m]);
+					offset += 16;
 					break;
 			}
 		}

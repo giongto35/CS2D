@@ -99,6 +99,38 @@ function findIndex(arr, id) {
     return -1;
 }
 
+function processInitEvent(socketServer, socket, data) {
+	//send current players
+	LOG('INFO: A player connected');
+	sendCurrentState(socket);
+
+	LOG('INFO: Sent INIT package for existing sockets');
+	var player = new gameObject.Player(curr_id++, data.name, 60, 60, 100, socket);
+	players.push(player);
+	
+	socket.send(coding.encrypt({
+		command: constant.COMMAND_TYPE.INIT,
+		name: player.name,
+		id: player.id,
+		x: player.x,
+		y: player.y,
+		health: player.health,
+		main: 1
+	}));
+	LOG('INFO: Sent INIT package to initialize socket ' + player.id);
+
+	socketServer.sendOther(socket, coding.encrypt({
+		command: constant.COMMAND_TYPE.INIT,
+		name: player.name,
+		id: player.id,
+		x: player.x,
+		y: player.y,
+		health: player.health,
+		main: 0
+	}));
+	LOG('INFO: Sent INIT package to all sockets except socket ' + player.id);
+}
+
 function processMouseEvent(socketServer, socket, data) {
 	var deg = Math.atan2(data.x2 - data.x1, data.y2 - data.y1);
 	var dx = constant.BULLET_CONFIG.SPEED * Math.sin(deg);
@@ -188,40 +220,18 @@ socketServer.sendOther = function sendOther(socket, data) {
 };
 
 socketServer.on('connection', function connection(socket) {
-	LOG('A user connected. Assigning UserID...');
 
-	//send current players
-	LOG('INFO: A player connected');
-	sendCurrentState(socket);
-
-	LOG('INFO: Sent INIT package for existing sockets');
-	var player = new gameObject.Player(curr_id++, 60, 60, 100, socket);
-	players.push(player);
-	
-	socket.send(coding.encrypt({
-		command: constant.COMMAND_TYPE.INIT,
-		id: player.id,
-		x: player.x,
-		y: player.y,
-		health: player.health,
-		main: 1
-	}));
-	LOG('INFO: Sent INIT package to initialize socket ' + player.id);
-
-	socketServer.sendOther(socket, coding.encrypt({
-		command: constant.COMMAND_TYPE.INIT,
-		id: player.id,
-		x: player.x,
-		y: player.y,
-		health: player.health,
-		main: 0
-	}));
-	LOG('INFO: Sent INIT package to all sockets except socket ' + player.id);
+	LOG('A socket connected');
 
   	socket.on('message', function (mess) {
   		var data = coding.decrypt(mess);
 		LOG('INFO: Received a package');
 		LOG(data);
+		if (data.command == constant.COMMAND_TYPE.INIT) {
+			LOG('INFO: Received INIT package');
+			processInitEvent(socketServer, socket, data);
+			LOG('INFO: Processed INIT event');			
+		}
 		if (data.command == constant.COMMAND_TYPE.KEYBOARD) {
 			LOG('INFO: Received KEYBOARD package');
 			processKeyboardEvent(socketServer, socket, data);

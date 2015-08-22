@@ -2,8 +2,9 @@
 
 var constant = require('../share/const.js');
 
-var Player = function (id, x, y, health, socket) {
+var Player = function (id, name, x, y, health, socket) {
 	this.id = id;
+	this.name = name;
 	this.x = x;
 	this.y = y;
 	this.health = health;
@@ -38,8 +39,8 @@ var Block = function(x, y) {
 	this.y = y;
 }
 
-exports.Player = function (id, x, y, health, socket) {
-	return new Player(id, x, y, health, socket);
+exports.Player = function (id, name, x, y, health, socket) {
+	return new Player(id, name, x, y, health, socket);
 }
 
 exports.Bullet = function (id, stime, x1, y1, dx, dy) {

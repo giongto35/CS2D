@@ -70,7 +70,7 @@
 
 	exports.COMMAND_TYPE = {INIT: 0, HPCHANGE: 1, DESTROY: 2, KEYBOARD: 3, MOUSE: 4, MOUSEBUILD: 5, UPDATE: 6, SHOOT: 7, PING: 8};
 	exports.PACK = [
-		{id: 'Int32', x: 'Int32', y: 'Int32', health: 'Int32', main: 'Int32'}, //INIT
+		{id: 'Int32', name: 'String8', x: 'Int32', y: 'Int32', health: 'Int32', main: 'Int32'}, //INIT
 		{id: 'Int32', health: 'Int32'}, //HIT
 		{id: 'Int32'}, //DESTROY
 		{id: 'Int32', key: 'Uint8'},  //KEYBOARD
