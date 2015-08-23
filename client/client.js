@@ -56,10 +56,15 @@
 
 	window.onload = function() {
 		var btn = document.getElementById('startButton');
+		var playerNameInput = document.getElementById('playerNameInput');
 
 		btn.onclick = function () {
 			startGame();
 		}
+
+		playerNameInput.addEventListener('keypress', function (e) {
+			playerNamePress(e);
+		});
 
 		window.addEventListener('keydown', function (e) {
 			keyDownEvent(e);
@@ -81,6 +86,14 @@
 			mouseUpEvent(e);
 		}, false);
 	};
+
+	function playerNamePress(e) {
+		var key = e.which || e.keyCode;
+		console.log("HIHI");
+		if ( key === constant.KEY_ENTER) {
+			startGame();
+		}
+	}
 
 	function keyDownEvent(e) {
 		var key = e.which || e.keyCode;
@@ -234,6 +247,7 @@
 	}
 
 	function removePlayer(data) {
+		console.log("HIHI");
 		if (data.id == player.id) {
 			player.destroy();
 			running = false;
@@ -434,12 +448,12 @@
 		return text;
 	}
 
-	function drawPlayer(centerX, centerY, mainChar) {
+	function drawPlayer(centerX, centerY, name, mainChar) {
 		var playerGraphic = new PIXI.Container();
 		var color = mainChar === true ? constant.PLAYER_CONFIG.DEFAULT_COLOR : constant.ENEMY_CONFIG.DEFAULT_COLOR;
 		var body = drawCircle(0, 0, constant.PLAYER_CONFIG.DEFAULT_SIZE, color, constant.PLAYER_DEPTH);
 		var healthBar = drawRectangle(-50, -35, 100, 10, 0xFF0000, false, constant.PLAYER_DEPTH, masterStage);
-		var nameTitle = drawText(0, 0, player.name, {fill: 0x0066FF}, constant.TEXT_DEPTH);
+		var nameTitle = drawText(0, 0, name, {fill: 0xFFFFFF, strokeThickness: 2}, constant.TEXT_DEPTH);
 		nameTitle.x = 0 - nameTitle.width / 2;
 		nameTitle.y = 0 - nameTitle.height / 2;
 
@@ -897,7 +911,7 @@
 			super(id, x, y);
 			// var color = mainChar === true ? constant.PLAYER_CONFIG.DEFAULT_COLOR : constant.ENEMY_CONFIG.DEFAULT_COLOR;
 			// this.graphic = drawCircle(0, 0, constant.PLAYER_CONFIG.DEFAULT_SIZE, color, constant.PLAYER_DEPTH);
-			var playerGraphic = drawPlayer(0, 0, mainChar);
+			var playerGraphic = drawPlayer(0, 0, name, mainChar);
 			this.graphic = playerGraphic.player;
 			this.healthBarGraphic = playerGraphic.healthBar;
 			this.bodyGraphic = playerGraphic.body;

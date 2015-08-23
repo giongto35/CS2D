@@ -47,6 +47,7 @@
 	exports.KEY_D = 68;
 	exports.KEY_F = 70;
 	exports.KEY_P = 80;
+	exports.KEY_ENTER = 13;
 
 	// Misc config
 	exports.DIR = [{x: -1, y: 0}, {x: 0, y: -1}, {x: 1, y: 0}, {x: 0, y: 1}];

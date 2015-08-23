@@ -108,6 +108,27 @@ function findIndexByAtr(arr, atr, val) {
     return -1;
 }
 
+function sendCurrentState(socket) {
+	for (var iPlayer in players) {
+		var player = players[iPlayer];
+		console.log(player.name);
+		socket.send(coding.encrypt({
+			command: constant.COMMAND_TYPE.INIT,
+			id: player.id,
+			name: player.name,
+			x: player.x,
+			y: player.y,
+			health: player.health,
+			main: 0
+		}));
+	}
+
+	for (var iBlock in blocks) {
+		var block = blocks[iBlock];
+		socket.send(coding.encrypt({command: constant.COMMAND_TYPE.MOUSEBUILD, x: block.x / constant.BLOCK_SIZE, y: block.y / constant.BLOCK_SIZE}));
+	}
+}
+
 function processInitEvent(socketServer, socket, data) {
 	//send current players
 	LOG('INFO: A player connected');
@@ -194,26 +215,6 @@ function processPingEvent(socketServer, socket, data) {
 function processBuildEvent(socketServer, socket, data) {
 	blocks.push(new gameObject.Block(data.x * constant.BLOCK_SIZE, data.y * constant.BLOCK_SIZE));
 	socketServer.broadcast(coding.encrypt({command: constant.COMMAND_TYPE.MOUSEBUILD, x: data.x, y: data.y}));
-}
-
-function sendCurrentState(socket) {
-	for (var iPlayer in players) {
-		var player = players[iPlayer];
-		socket.send(coding.encrypt({
-			command: constant.COMMAND_TYPE.INIT,
-			id: player.id,
-			name: player.name,
-			x: player.x,
-			y: player.y,
-			health: player.health,
-			main: 0
-		}));
-	}
-
-	for (var iBlock in blocks) {
-		var block = blocks[iBlock];
-		socket.send(coding.encrypt({command: constant.COMMAND_TYPE.MOUSEBUILD, x: block.x / constant.BLOCK_SIZE, y: block.y / constant.BLOCK_SIZE}));
-	}
 }
 
 socketServer.broadcast = function broadcast(data) {
@@ -327,7 +328,6 @@ function gameLoop() {
 						command: constant.COMMAND_TYPE.DESTROY,
 						id: player.id
 					}));		
-					console.log(players);
 					break;
 				}
 			}
