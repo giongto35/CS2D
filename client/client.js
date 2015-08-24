@@ -335,27 +335,31 @@
 		}
 	}
 
-	function updateGameState() {
-		//update by game input
-		for (var m in gameInput.keyboard) {
-			if (gameInput.keyboard[m]) {
-				if (m == constant.KEY_F) {
-					toggleFog();
+	function updateGameInput() {
+		if (running) {
+			//update by game input
+			for (var m in gameInput.keyboard) {
+				if (gameInput.keyboard[m]) {
+					if (m == constant.KEY_F) {
+						toggleFog();
+					} else {
+						processKeyboardEvent(player.id, m);
+					}
+				}
+			}
+			if (gameInput.mouse.down) {
+				if (gameInput.keyboard[constant.KEY_SHIFT]) {
+					if (dist(toAbsoluteX(gameInput.mouse.x), toAbsoluteY(gameInput.mouse.y), player.x, player.y) > constant.BUILD_LIM) {
+						processMouseBuildEvent(toAbsoluteX(gameInput.mouse.x), toAbsoluteY(gameInput.mouse.y));
+					}
 				} else {
-					processKeyboardEvent(player.id, m);
+					processMouseEvent(player.id, player.x, player.y, toAbsoluteX(gameInput.mouse.x), toAbsoluteY(gameInput.mouse.y));
 				}
 			}
 		}
-		if (gameInput.mouse.down) {
-			if (gameInput.keyboard[constant.KEY_SHIFT]) {
-				if (dist(toAbsoluteX(gameInput.mouse.x), toAbsoluteY(gameInput.mouse.y), player.x, player.y) > constant.BUILD_LIM) {
-					processMouseBuildEvent(toAbsoluteX(gameInput.mouse.x), toAbsoluteY(gameInput.mouse.y));
-				}
-			} else {
-				processMouseEvent(player.id, player.x, player.y, toAbsoluteX(gameInput.mouse.x), toAbsoluteY(gameInput.mouse.y));
-			}
-		}
+	}
 
+	function updateGameState() {
 		//update Object
 		for (var i = gameObj.length - 1; i >= 0; i--) {
 			var obj = gameObj[i];
@@ -375,6 +379,7 @@
 
 	function gameLoop() {
 		if (running) {
+			updateGameInput();
 	    	updateGameState();    	
 		}
 	    else {	
