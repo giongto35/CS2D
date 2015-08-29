@@ -247,13 +247,13 @@
 	}
 
 	function removePlayer(data) {
-		console.log("HIHI");
+		console.log("XOA");
+		console.log(data);
 		if (data.id == player.id) {
-			player.destroy();
 			running = false;
 			alert("You got hit. Reload to replay");
 			socket.close();
-		}
+		} 
 		var idx = findIndex(players, data.id);
 		players[idx].destroy();
 		players.splice(idx, 1);
@@ -443,6 +443,9 @@
 
 	PIXI.FogFilter.prototype = Object.create(PIXI.AbstractFilter.prototype);
 	PIXI.FogFilter.prototype.constructor = PIXI.FogFilter;
+	PIXI.Text.prototype.clear = function () {
+		this.text = "";
+	}
 
 	function drawText(x, y, text, style, depth) {
 		var text = new PIXI.Text(text, style);
@@ -903,7 +906,13 @@
 			}
 			else {
 				for (var iChildren in this.graphic.children) {
-					this.graphic.children[iChildren].clear();
+					// console.log(this.graphic.children[iChildren]);
+					// if (this.graphic.children[iChildren].clear) {
+						this.graphic.children[iChildren].clear();
+					// } else {						
+					// 	// console.log(this.graphic.children[iChildren]);
+					// 	// this.graphic.children[iChildren].destroy();
+					// }
 				}
 			}
 			delete this.graphic;
